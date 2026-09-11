@@ -63,6 +63,7 @@ def run_pipeline(limit: int = 1000):
     renderer = CVRenderer()
     compiler = TectonicCompiler()
     tracker = ApplicationTracker()
+    tracker.prune_all(ttl_days=30)
     router = ApplicationRouter()
 
     # Generate tailored CV for each qualified job

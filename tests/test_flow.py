@@ -193,6 +193,65 @@ def test_duplicator_cache():
     assert saved_data["total_active"] == 2
 
 
+def test_storage_30_day_cleanup():
+    import os
+    import csv
+    import time
+    from datetime import datetime, timedelta
+    from src.storage.tracker import ApplicationTracker
+
+    test_csv = Path("output/test_cleanup_apps.csv")
+    if test_csv.exists():
+        test_csv.unlink()
+
+    tracker = ApplicationTracker(csv_path=str(test_csv), webhook_url="")
+
+    today_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    old_date = (datetime.now() - timedelta(days=35)).strftime("%Y-%m-%d %H:%M:%S")
+
+    tracker.log_job({"company": "FreshCorp", "title": "Dev", "date": today_str, "status": "QUALIFIED"})
+    tracker.log_job({"company": "OldCorp", "title": "Dev", "date": old_date, "status": "QUALIFIED"})
+
+    with open(test_csv, "r", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 2
+
+    # Prune CSV records older than 30 days
+    purged_csv = tracker.prune_local_records(ttl_days=30)
+    assert purged_csv == 1
+
+    with open(test_csv, "r", encoding="utf-8") as f:
+        remaining_rows = list(csv.DictReader(f))
+    assert len(remaining_rows) == 1
+    assert remaining_rows[0]["company"] == "FreshCorp"
+
+    # Test file pruning
+    test_dir = Path("output/test_cleanup_files")
+    test_dir.mkdir(parents=True, exist_ok=True)
+    fresh_file = test_dir / "fresh.pdf"
+    old_file = test_dir / "old.pdf"
+    fresh_file.write_text("fresh")
+    old_file.write_text("old")
+
+    # Set old_file modification time to 35 days ago
+    past_time = time.time() - (35 * 86400)
+    os.utime(str(old_file), (past_time, past_time))
+
+    purged_files = tracker.prune_local_files(output_dir=str(test_dir), ttl_days=30)
+    assert purged_files == 1
+    assert fresh_file.exists()
+    assert not old_file.exists()
+
+    # Clean up test artifacts
+    if fresh_file.exists():
+        fresh_file.unlink()
+    if test_dir.exists():
+        test_dir.rmdir()
+    if test_csv.exists():
+        test_csv.unlink()
+
+
 if __name__ == "__main__":
     test_full_pipeline_flow()
     test_duplicator_cache()
+    test_storage_30_day_cleanup()

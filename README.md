@@ -307,6 +307,23 @@ pytest tests/ -v
 
 ---
 
+## Automated 30-Day Rolling Cleanup (Zero Storage Bloat)
+
+To ensure the pipeline runs forever without exceeding local disk space or free cloud storage quotas, an automated **30-day self-cleaning retention policy** runs on every execution across all 6 storage layers:
+
+| Layer | Storage Location | Retention Policy | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Deduplication Cache** | `data/processed_cache.json` | Pruned after 30 days | Prevents hash bloat; allows reposted jobs to be naturally re-evaluated. |
+| **Local Application Log** | `data/applications.csv` | Pruned after 30 days | Keeps local CSV tracking lean and fast without manual maintenance. |
+| **Local Artifacts** | `output/` (PDFs, TeX, drafts) | Pruned after 30 days | Automatically deletes old compiled CVs, LaTeX logs, and email drafts. |
+| **Google Drive** | `Job_CVs/` folder | Trashed after 30 days | Protects your free 15 GB Google Drive storage quota. |
+| **Google Sheets** | Applications Sheet rows | Deleted after 30 days | Keeps your job tracker sheet responsive and focused on active leads. |
+| **Gmail Inbox** | Gmail Drafts | Deleted after 30 days | Automatically cleans stale, un-sent job drafts older than 30 days. |
+
+> **Automation**: Every execution of `python -m src.main` triggers both local cleanup (`prune_local_records`, `prune_local_files`) and remote cloud cleanup (`run30DayCleanup` via webhook). You can also run `run30DayCleanup` manually or set a recurring time-driven trigger in Google Apps Script.
+
+---
+
 ## Core Principles
 
 - **Zero Fabrication**: No LLMs generating fake accomplishments. The CV builder only uses verified facts from `data/bullet_bank.yaml`.

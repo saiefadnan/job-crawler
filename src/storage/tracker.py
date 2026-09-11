@@ -103,3 +103,93 @@ class ApplicationTracker:
                 print(f"[Google Sheets Warning] Webhook returned HTTP {resp.status_code}. Record safely preserved in local CSV.")
         except Exception as e:
             print(f"[Google Sheets Warning] Could not reach Webhook ({e}). Record safely preserved in local CSV.")
+
+    def prune_local_records(self, ttl_days: int = 30) -> int:
+        """Prunes rows from applications.csv older than ttl_days."""
+        if not os.path.exists(self.csv_path):
+            return 0
+
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(days=ttl_days)
+        kept_rows = []
+        purged_count = 0
+
+        try:
+            with open(self.csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    date_val = row.get("date", "").strip()
+                    row_dt = None
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"):
+                        try:
+                            row_dt = datetime.strptime(date_val, fmt)
+                            break
+                        except ValueError:
+                            pass
+
+                    if row_dt and row_dt < cutoff:
+                        purged_count += 1
+                    else:
+                        kept_rows.append(row)
+
+            if purged_count > 0:
+                with open(self.csv_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=self.headers, extrasaction='ignore')
+                    writer.writerow(dict(zip(self.headers, self.headers))) # Header row
+                    writer.writerows(kept_rows)
+                print(f"[Storage Prune] Purged {purged_count} CSV records older than {ttl_days} days. Remaining: {len(kept_rows)}")
+
+        except Exception as e:
+            print(f"[Warning] Error pruning CSV records: {e}")
+
+        return purged_count
+
+    def prune_local_files(self, output_dir: str = "output", ttl_days: int = 30) -> int:
+        """Removes generated PDFs, TeX files, and email drafts older than ttl_days."""
+        if not os.path.exists(output_dir):
+            return 0
+
+        from datetime import timedelta
+        cutoff_ts = (datetime.now() - timedelta(days=ttl_days)).timestamp()
+        purged_count = 0
+
+        for root, _, files in os.walk(output_dir):
+            for fname in files:
+                if fname in ("pending_review.md", ".gitkeep"):
+                    continue
+                fpath = os.path.join(root, fname)
+                try:
+                    if os.path.getmtime(fpath) < cutoff_ts:
+                        os.remove(fpath)
+                        purged_count += 1
+                except Exception as e:
+                    print(f"[Warning] Could not remove expired file {fpath}: {e}")
+
+        if purged_count > 0:
+            print(f"[Storage Prune] Purged {purged_count} local files older than {ttl_days} days from {output_dir}/.")
+        return purged_count
+
+    def trigger_cloud_cleanup(self, ttl_days: int = 30) -> Optional[Dict[str, Any]]:
+        """Invokes Google Apps Script to purge Google Drive CVs, Sheet rows, and Gmail drafts older than ttl_days."""
+        if not self.webhook_url:
+            return None
+        try:
+            payload = {"action": "cleanup", "ttl_days": ttl_days}
+            resp = requests.post(self.webhook_url, json=payload, timeout=20, allow_redirects=True)
+            if resp.status_code in (200, 302):
+                data = resp.json() if resp.text else {}
+                purged = data.get("purged", {})
+                print(f"[Cloud Prune] Google Drive: -{purged.get('drive', 0)} files | Sheet: -{purged.get('sheet', 0)} rows | Gmail: -{purged.get('gmail', 0)} drafts.")
+                return data
+            else:
+                print(f"[Cloud Prune Warning] Webhook returned status {resp.status_code}")
+        except Exception as e:
+            print(f"[Cloud Prune Warning] Could not trigger cloud cleanup: {e}")
+        return None
+
+    def prune_all(self, ttl_days: int = 30):
+        """Unified 30-day cleanup across CSV records, local output files, and cloud storage."""
+        self.prune_local_records(ttl_days=ttl_days)
+        self.prune_local_files(ttl_days=ttl_days)
+        if self.webhook_url:
+            self.trigger_cloud_cleanup(ttl_days=ttl_days)

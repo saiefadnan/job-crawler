@@ -190,6 +190,19 @@ function doPost(e) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const contents = JSON.parse(e.postData.contents);
 
+    // 0. Cloud Cleanup Action (Google Drive CVs, Google Sheet rows, Gmail drafts)
+    if (contents.action === "cleanup") {
+      const ttlDays = contents.ttl_days || 30;
+      const result = run30DayCleanup(ttlDays);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "30-Day cloud cleanup completed",
+          purged: result
+        })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
     let driveLink = contents.drive_link || "";
     let cvFile = null;
 
@@ -280,4 +293,104 @@ function doPost(e) {
       JSON.stringify({ status: "error", message: err.message })
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+
+/**
+ * ============================================================================
+ * 30-DAY RETENTION CLEANUP FOR CLOUD STORAGE
+ * ============================================================================
+ */
+
+/**
+ * Prunes files in Google Drive folder 'Job_CVs' older than ttlDays.
+ */
+function pruneExpiredDriveFiles(ttlDays = 30) {
+  const cutoffDate = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000);
+  const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
+  let purgedCount = 0;
+
+  if (folderIter.hasNext()) {
+    const folder = folderIter.next();
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getDateCreated() < cutoffDate) {
+        file.setTrashed(true);
+        purgedCount++;
+      }
+    }
+  }
+  Logger.log(`[Drive Prune] Purged ${purgedCount} files older than ${ttlDays} days from '${CV_FOLDER_NAME}'.`);
+  return purgedCount;
+}
+
+/**
+ * Prunes rows in the active Google Sheet where the 'date' column is older than ttlDays.
+ */
+function pruneExpiredSheetRows(ttlDays = 30) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return 0;
+
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const dateCol = headers.indexOf("date");
+  if (dateCol === -1) return 0;
+
+  const cutoffDate = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000);
+  let purgedRows = 0;
+
+  // Iterate backwards from bottom to row 2
+  for (let i = data.length - 1; i >= 1; i--) {
+    const rawDate = data[i][dateCol];
+    if (!rawDate) continue;
+    const rowDate = new Date(rawDate);
+    if (!isNaN(rowDate.getTime()) && rowDate < cutoffDate) {
+      sheet.deleteRow(i + 1);
+      purgedRows++;
+    }
+  }
+  Logger.log(`[Sheet Prune] Purged ${purgedRows} rows older than ${ttlDays} days.`);
+  return purgedRows;
+}
+
+/**
+ * Prunes job application drafts in Gmail older than ttlDays.
+ */
+function pruneExpiredGmailDrafts(ttlDays = 30) {
+  const cutoffDate = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000);
+  const drafts = GmailApp.getDrafts();
+  let purgedDrafts = 0;
+
+  for (let i = 0; i < drafts.length; i++) {
+    const draft = drafts[i];
+    const msg = draft.getMessage();
+    const subject = (msg.getSubject() || "").toLowerCase();
+    // Target job application drafts
+    if (subject.includes("application:") || subject.includes("job application")) {
+      if (msg.getDate() < cutoffDate) {
+        draft.deleteDraft();
+        purgedDrafts++;
+      }
+    }
+  }
+  Logger.log(`[Gmail Draft Prune] Purged ${purgedDrafts} drafts older than ${ttlDays} days.`);
+  return purgedDrafts;
+}
+
+/**
+ * Master 30-Day Cloud Cleanup function.
+ * Can be run manually from Apps Script or triggered automatically via webhook / time-driven trigger.
+ */
+function run30DayCleanup(ttlDays = 30) {
+  const drivePurged = pruneExpiredDriveFiles(ttlDays);
+  const sheetPurged = pruneExpiredSheetRows(ttlDays);
+  const draftsPurged = pruneExpiredGmailDrafts(ttlDays);
+  const summary = {
+    drive: drivePurged,
+    sheet: sheetPurged,
+    gmail: draftsPurged
+  };
+  Logger.log(`[30-Day Cloud Cleanup] Drive: -${drivePurged}, Sheet: -${sheetPurged}, Gmail: -${draftsPurged}`);
+  return summary;
 }
