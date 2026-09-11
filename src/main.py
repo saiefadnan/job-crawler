@@ -1,4 +1,6 @@
 from src.sourcing.fetchers.jobicy import JobicyFetcher
+from src.sourcing.fetchers.remoteok import RemoteOKFetcher
+from src.sourcing.fetchers.arbeitnow import ArbeitnowFetcher
 from src.sourcing.duplicator import Duplicator
 from src.ranking.matcher import Matcher
 from src.cv_builder.selector import Selector
@@ -9,8 +11,17 @@ from src.routing.router import ApplicationRouter
 
 
 def run_pipeline(limit: int = 1000):
-    fetcher = JobicyFetcher()
-    results = fetcher.fetch_jobs(limit=limit)
+    fetchers = [
+        JobicyFetcher(),
+        RemoteOKFetcher(),
+        ArbeitnowFetcher(),
+    ]
+    results = []
+    for fetcher in fetchers:
+        try:
+            results.extend(fetcher.fetch_jobs(limit=limit))
+        except Exception as e:
+            print(f"[Warning] Fetcher {fetcher.__class__.__name__} encountered an error: {e}")
     
     duplicator = Duplicator()
     new_jobs = duplicator.filter_new(results)
