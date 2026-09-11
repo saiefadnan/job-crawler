@@ -1,0 +1,140 @@
+version: "1.0"
+description: "Single source of truth for verified, immutable CV bullets. 100% genuine content from Saief Md. Hossain Adnan's CV."
+
+candidate:
+  name: "Saief Md. Hossain Adnan"
+  title: "Full Stack Developer"
+  email: "saiefadnan078@gmail.com"
+  phone: "+880 1308-050934"
+  location: "Dhaka, Bangladesh"
+  github: "github.com/saiefadnan"
+  linkedin: "linkedin.com/in/saief-md-adnan-48293523a"
+
+education:
+  - institution: "Military Institute of Science and Technology (MIST)"
+    degree: "Bachelor of Science in Computer Science and Engineering"
+    period: "May 2022 – June 2026"
+    cgpa: "3.77 / 4.00"
+
+experience:
+  - company: "NextPage"
+    role: "Frontend Engineer Intern"
+    location: "Dhaka, Bangladesh"
+    period: "Jan 2026 – Jun 2026"
+    bullets:
+      - id: "np_01"
+        text: "Contributed to NextVat, an enterprise VAT management system; implemented inventory and service modules including filtering logic and service list integration in React.js."
+        tags: ["react", "javascript", "frontend", "enterprise", "ui"]
+      - id: "np_02"
+        text: "Resolved critical bugs in VAT calculation, duplicate costing sheets, and local purchase VAT handling; improved UI components including VAT header redesign and VDS notification logic."
+        tags: ["react", "debugging", "ui", "frontend", "javascript"]
+      - id: "np_03"
+        text: "Built UI for EduGuard360 (Flutter), a multi-role education platform serving students, teachers, and parents."
+        tags: ["flutter", "mobile", "ui", "cross-platform"]
+      - id: "np_04"
+        text: "Developed EduGuard360 modules for classes, results, grading, fees, and notifications; integrated REST APIs using Riverpod state management."
+        tags: ["flutter", "riverpod", "rest api", "api", "mobile"]
+      - id: "np_05"
+        text: "Collaborated across enterprise projects using Git-based PR workflow in an agile 4-member engineering team."
+        tags: ["git", "collaboration", "teamwork", "agile"]
+
+  - company: "Teletalk Bangladesh Limited"
+    role: "Industrial Trainee"
+    location: "Dhaka"
+    period: "2024"
+    bullets:
+      - id: "tt_01"
+        text: "Rotated across System Operations, IT, and Billing departments; gained hands-on knowledge of telecom infrastructure and enterprise billing pipelines."
+        tags: ["telecom", "infrastructure", "operations", "backend"]
+      - id: "tt_02"
+        text: "Traced end-to-end data flows in live billing systems and documented backend-to-frontend service interfaces."
+        tags: ["backend", "documentation", "api", "architecture"]
+      - id: "tt_03"
+        text: "Completed industrial rotation with official certification recognizing technical competency and professional conduct."
+        tags: ["certification"]
+
+projects:
+  - id: "chit_chat"
+    name: "Chit-Chat"
+    tech_stack: ["Node.js", "Express", "Socket.io", "WebRTC", "MongoDB", "Firestore"]
+    bullets:
+      - id: "cc_01"
+        text: "Engineered real-time chat platform with mesh-topology WebRTC video calling, designing a non-blocking handshake queue with ack synchronization on signaling server to eliminate race conditions when peers join simultaneously."
+        tags: ["webrtc", "socket.io", "websockets", "node.js", "realtime", "backend", "concurrency"]
+      - id: "cc_02"
+        text: "Built segmented file uploads (512 KB chunks) to Google Drive with SHA-256 based deduplication and per-socket chunk buffering to prevent upload interleaving."
+        tags: ["sha-256", "node.js", "deduplication", "backend", "performance", "streams"]
+      - id: "cc_03"
+        text: "Designed a dual-database architecture (MongoDB for auth/user records, Firestore for real-time messaging and rooms) with JWT auth, rate limiting, and live call-status indicators across rooms."
+        tags: ["mongodb", "firestore", "database", "jwt", "rate limiting", "security", "backend"]
+
+  - id: "medishare"
+    name: "MediShare"
+    tech_stack: ["React.js", "Express.js", "Supabase"]
+    bullets:
+      - id: "ms_01"
+        text: "Built the admin dashboard for a medicine donation platform, featuring live notification badges driven by Supabase’s Postgres change-data-capture (CDC) channel subscribing to INSERT events instead of polling."
+        tags: ["react", "supabase", "postgresql", "realtime", "frontend", "javascript"]
+      - id: "ms_02"
+        text: "Enforced role-based authorization for admin operations, integrating Google OAuth (Passport.js) for secure authentication."
+        tags: ["oauth", "rbac", "security", "express.js", "node.js", "backend"]
+
+  - id: "vehicle_expresso"
+    name: "Vehicle Expresso"
+    tech_stack: ["React.js", "Express.js", "Oracle DB", "Socket.io"]
+    bullets:
+      - id: "ve_01"
+        text: "Built vehicle-care service module on normalized Oracle schema, using sequence-generated IDs with RETURNING INTO bind variables across three linked tables."
+        tags: ["oracle", "sql", "database", "backend", "express.js"]
+      - id: "ve_02"
+        text: "Constructed admin analytics for revenue by service type, month, and day by invoking Oracle PL/SQL stored functions and procedures through bind-variable out-params, rendered as pie and line charts."
+        tags: ["oracle", "pl/sql", "analytics", "database", "react", "frontend"]
+      - id: "ve_03"
+        text: "Implemented Socket.io-based live chat between customers and care-desk admins, with in-memory socket-ID routing for presence tracking, unread-message badges, and persisted chat history."
+        tags: ["socket.io", "websockets", "realtime", "node.js", "chat"]
+
+  - id: "pdf_explainer_ai"
+    name: "PDF Explainer AI"
+    tech_stack: ["Python", "Streamlit", "Pinecone", "Groq", "Hugging Face"]
+    bullets:
+      - id: "pe_01"
+        text: "Fine-tuned and published a custom BART summarization model to Hugging Face Hub (adnan078/bart-pdf-summarizer), with automatic fallback for environments where it cannot be loaded."
+        tags: ["hugging face", "python", "nlp", "transformers", "ai", "machine learning"]
+      - id: "pe_02"
+        text: "Built a RAG pipeline with tiktoken-aware chunking, embeddings via Sentence-Transformers (all-MiniLM-L6-v2), and top-k context retrieval from a Pinecone vector store."
+        tags: ["rag", "python", "embeddings", "pinecone", "transformers", "ai"]
+      - id: "pe_03"
+        text: "Answered user questions with a Groq-hosted LLM grounded in retrieved context, backed by a hand-rolled rate limiter with exponential backoff and context-quality filter to reject irrelevant chunks."
+        tags: ["groq", "llm", "python", "ai", "rate limiting"]
+
+  - id: "neighborly"
+    name: "Neighborly"
+    tech_stack: ["Flutter", "Riverpod", "Firebase", "Hono"]
+    bullets:
+      - id: "nb_01"
+        text: "Built community forum feed with Firestore-backed posts and comments, utilizing Riverpod StateNotifier state management for robust async loading and error states."
+        tags: ["flutter", "riverpod", "firebase", "firestore", "mobile", "state management"]
+      - id: "nb_02"
+        text: "Engineered end-to-end auth flow (signup, email verification, password reset) and an event-planning module for creating and browsing community events."
+        tags: ["flutter", "auth", "firebase", "hono", "mobile"]
+
+competitive_programming:
+  total_solved: "522+"
+  platforms:
+    - platform: "Codeforces"
+      problems: "240"
+      handle: "saiefadnan"
+    - platform: "LeetCode"
+      problems: "81"
+      handle: "Saief_adnan"
+    - platform: "VJudge"
+      problems: "220"
+      handle: "SAIEF_ADNAN078"
+
+certifications:
+  - "Industrial Attachment Certification – Teletalk Bangladesh Limited"
+  - "DevOps 101 – Simplilearn SkillUp"
+  - "Introduction to DevOps Tools – Simplilearn SkillUp"
+  - "HACK NSU SEASON 4 – Certificate of Participation"
+  - "Independence Day Programming Contest 2023 – Certificate of Participation"
+  - "MIST LEETCON 2023 – Volunteer Organiser"

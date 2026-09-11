@@ -1,0 +1,6 @@
+[tool.pyrefly]
+python-interpreter-path = "E:/anaconda/python.exe"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

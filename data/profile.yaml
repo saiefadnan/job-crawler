@@ -1,0 +1,90 @@
+candidate:
+  name: "Saief Md. Hossain Adnan"
+  title: "Full Stack Developer"
+  email: "saiefadnan078@gmail.com"
+  phone: "+880 1308-050934"
+  location: "Dhaka, Bangladesh (Open to Remote / Relocation)"
+  github: "github.com/saiefadnan"
+  linkedin: "linkedin.com/in/saief-md-adnan-48293523a"
+  education:
+    institution: "Military Institute of Science and Technology (MIST)"
+    degree: "Bachelor of Science in Computer Science and Engineering"
+    period: "May 2022 – June 2026"
+    cgpa: "3.77 / 4.00"
+
+target_roles:
+  - "Full Stack Developer"
+  - "Full Stack Engineer"
+  - "Frontend Engineer"
+  - "Frontend Developer"
+  - "Backend Developer"
+  - "Backend Engineer"
+  - "Software Engineer"
+  - "Node.js Developer"
+  - "React Developer"
+  - "Flutter Developer"
+  - "AI Engineer"
+
+role_synonyms:
+  full stack: ["fullstack", "full-stack", "frontend and backend", "web developer", "full stack developer", "full stack engineer"]
+  frontend: ["front-end", "front end", "react developer", "ui developer", "client engineer"]
+  backend: ["back-end", "back end", "server-side", "api engineer", "node developer"]
+  mobile: ["flutter", "cross-platform", "mobile developer", "app developer"]
+  ai: ["nlp", "machine learning", "transformers", "rag", "ai developer", "llm"]
+
+skills:
+  primary:
+    react: 1.0
+    javascript: 1.0
+    node.js: 0.95
+    express.js: 0.95
+    python: 0.90
+    rest api: 0.90
+    postgresql: 0.85
+    mongodb: 0.85
+    flutter: 0.85
+    html5: 0.80
+    css3: 0.80
+    git: 0.80
+
+  secondary:
+    websockets: 0.75
+    socket.io: 0.75
+    supabase: 0.75
+    firebase: 0.75
+    riverpod: 0.70
+    hono: 0.70
+    webrtc: 0.70
+    transformers: 0.70
+    hugging face: 0.70
+    nlp: 0.70
+    docker: 0.65
+    oracle: 0.65
+    java: 0.65
+    dart: 0.65
+    c++: 0.60
+    streamlit: 0.60
+    groq: 0.60
+    pinecone: 0.60
+    oauth: 0.60
+    rbac: 0.60
+
+negative_keywords:
+  - "us citizen only"
+  - "security clearance"
+  - "secret clearance"
+  - "ts/sci"
+  - "unpaid internship"
+  - "wordpress developer"
+  - "magento"
+  - "drupal"
+  - "php developer"
+
+scoring_weights:
+  title: 0.35
+  skills: 0.50
+  synergy: 0.15
+
+thresholds:
+  discard_below: 40.0
+  qualified_above: 65.0
