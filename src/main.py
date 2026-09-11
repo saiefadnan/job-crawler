@@ -1,3 +1,11 @@
+import sys
+
+# Ensure Windows terminal handles emojis and international characters gracefully
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from src.sourcing.fetchers.jobicy import JobicyFetcher
 from src.sourcing.fetchers.remoteok import RemoteOKFetcher
 from src.sourcing.fetchers.arbeitnow import ArbeitnowFetcher
