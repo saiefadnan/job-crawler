@@ -1,14 +1,31 @@
 import re
+import yaml
 from pathlib import Path
 from typing import Dict, Any
 
 
 class ApplicationRouter:
-    def __init__(self, output_dir: str = "output"):
+    def __init__(self, output_dir: str = "output", profile_path: str = "data/profile.yaml"):
         self.output_dir = Path(output_dir)
         self.drafts_dir = self.output_dir / "email_drafts"
         self.drafts_dir.mkdir(parents=True, exist_ok=True)
         self.digest_file = self.output_dir / "pending_review.md"
+        self.profile = self._load_profile(profile_path)
+        self.candidate = self.profile.get("candidate", {})
+
+    def _load_profile(self, profile_path: str) -> Dict[str, Any]:
+        p = Path(profile_path)
+        if not p.is_absolute():
+            for parent in [Path.cwd(), Path(__file__).resolve().parent.parent.parent]:
+                cand = parent / profile_path
+                if cand.exists():
+                    p = cand
+                    break
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            return {}
 
     def route(self, job_data: Dict[str, Any], pdf_path: str) -> Dict[str, Any]:
         """Routes a qualified job into either an Email draft or ATS queue."""
@@ -26,26 +43,40 @@ class ApplicationRouter:
     def _handle_email_route(self, job_data: Dict[str, Any], email: str, pdf_path: str) -> Dict[str, Any]:
         company = job_data.get("company", "Hiring Team")
         title = job_data.get("title", "Software Engineer")
-        skills = ", ".join(job_data.get("matched_keywords", [])[:4]) or "Full Stack Development"
-        subject = f"Application for {title} - Saief Md. Hossain Adnan"
+        skills = ", ".join(job_data.get("matched_keywords", [])[:4]) or "Software Development"
+
+        cand_name = self.candidate.get("name", "Applicant")
+        cand_email = self.candidate.get("email", "")
+        cand_phone = self.candidate.get("phone", "")
+        cand_github = self.candidate.get("github", "")
+        cand_linkedin = self.candidate.get("linkedin", "")
+        edu = self.candidate.get("education", {})
+        degree = edu.get("degree", "Computer Science and Engineering")
+        institution = edu.get("institution", "")
+        cgpa = edu.get("cgpa", "")
+
+        edu_details = f"a {degree}" + (f" from {institution}" if institution else "") + (f" (CGPA {cgpa})" if cgpa else "")
+        subject = f"Application for {title} - {cand_name}"
 
         safe_name = "".join(c for c in f"{company}_{title}" if c.isalnum() or c in ('_', '-'))[:40]
         draft_file = self.drafts_dir / f"{safe_name}_email.txt"
 
+        github_link = f"https://{cand_github.replace('https://', '')}" if cand_github else ""
+        linkedin_link = f"https://{cand_linkedin.replace('https://', '')}" if cand_linkedin else ""
+
         body = (
             f"Dear Hiring Team at {company},\n\n"
             f"I am writing to express my strong interest in the {title} role. With hands-on experience "
-            f"in {skills}, a B.Sc. in Computer Science and Engineering from MIST (CGPA 3.77), "
-            f"and 522+ competitive programming problems solved, I am confident in my ability "
-            f"to contribute effectively to your engineering team.\n\n"
-            f"I have attached my tailored CV for your review. You can also explore my projects and "
-            f"code at https://github.com/saiefadnan\n\n"
-            f"Thank you for your time and consideration. I look forward to hearing from you.\n\n"
+            f"in {skills}, {edu_details}, I am confident in my ability to contribute effectively to your engineering team.\n\n"
+            f"I have attached my tailored CV for your review."
+            + (f" You can also explore my projects and code at {github_link}\n\n" if github_link else "\n\n")
+            + f"Thank you for your time and consideration. I look forward to hearing from you.\n\n"
             f"Best regards,\n"
-            f"Saief Md. Hossain Adnan\n"
-            f"saiefadnan078@gmail.com | +880 1308-050934\n"
-            f"GitHub: https://github.com/saiefadnan\n"
-            f"LinkedIn: https://linkedin.com/in/saief-md-adnan-48293523a\n"
+            f"{cand_name}\n"
+            + (f"{cand_email}" if cand_email else "")
+            + (f" | {cand_phone}\n" if cand_phone else "\n")
+            + (f"GitHub: {github_link}\n" if github_link else "")
+            + (f"LinkedIn: {linkedin_link}\n" if linkedin_link else "")
         )
 
         with open(draft_file, "w", encoding="utf-8") as f:
