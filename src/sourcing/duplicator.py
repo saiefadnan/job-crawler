@@ -19,27 +19,19 @@ class Duplicator:
 
     @property
     def seen_ids(self) -> Set[str]:
-        """Backward-compatible property returning set of all active job IDs."""
+        """Set of all active job IDs."""
         return set(self.cache.keys())
 
     def load_cache(self) -> Dict[str, str]:
-        """Loads cache with seamless support for legacy flat list and timestamped format."""
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        """Loads active cache mapping job_id to date string."""
         try:
             with open(self.cache_file, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:
                     return {}
                 data = json.loads(content)
-
-                # Format 2.0: {"entries": {"hash": "YYYY-MM-DD", ...}}
                 if isinstance(data.get("entries"), dict):
                     return data["entries"]
-
-                # Legacy format: {"seen_ids": ["hash1", ...]}
-                if isinstance(data.get("seen_ids"), list):
-                    return {job_id: today_str for job_id in data["seen_ids"]}
-
                 return {}
         except FileNotFoundError:
             return {}

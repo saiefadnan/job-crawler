@@ -139,5 +139,60 @@ def test_full_pipeline_flow():
     print("\n[PASS] Routing and CSV tracking verified successfully!")
 
 
+def test_duplicator_cache():
+    import json
+    from datetime import datetime, timedelta
+    from src.sourcing.duplicator import Duplicator
+
+    cache_path = Path("output/test_cache.json")
+    if cache_path.exists():
+        cache_path.unlink()
+
+    # Pre-populate cache with an active job and an expired job (35 days old)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    old_date = (datetime.now() - timedelta(days=35)).strftime("%Y-%m-%d")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "version": "2.0",
+                "ttl_days": 30,
+                "total_active": 2,
+                "entries": {
+                    "active_job_hash": today_str,
+                    "old_job_hash": old_date,
+                },
+            },
+            f,
+        )
+
+    duplicator = Duplicator(cache_file=str(cache_path), ttl_days=30)
+    assert "active_job_hash" in duplicator.cache
+    assert "old_job_hash" in duplicator.cache
+
+    # Job list to filter
+    j1 = Job(title="J1", company="C1", url="http://1", description="desc", source="test")
+    j1.id = "active_job_hash"
+    j2 = Job(title="J2", company="C2", url="http://2", description="desc", source="test")
+    j2.id = "brand_new_job_hash"
+
+    filtered = duplicator.filter_new([j1, j2])
+    assert len(filtered) == 1
+    assert filtered[0].id == "brand_new_job_hash"
+
+    # Commit should prune old_job_hash and add brand_new_job_hash
+    duplicator.commit(filtered)
+
+    # Verify on disk
+    with open(cache_path, "r", encoding="utf-8") as f:
+        saved_data = json.loads(f.read())
+    assert saved_data["version"] == "2.0"
+    assert "brand_new_job_hash" in saved_data["entries"]
+    assert "active_job_hash" in saved_data["entries"]
+    assert "old_job_hash" not in saved_data["entries"]  # Pruned!
+    assert saved_data["total_active"] == 2
+
+
 if __name__ == "__main__":
     test_full_pipeline_flow()
+    test_duplicator_cache()
