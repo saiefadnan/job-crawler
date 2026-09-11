@@ -43,6 +43,12 @@ class Matcher:
         self.discard_below = float(thresholds.get("discard_below", 40.0))
         self.qualified_above = float(thresholds.get("qualified_above", 65.0))
 
+        # Experience & Seniority filters
+        exp_cfg = self.profile.get("experience_filter", {})
+        self.max_years = int(exp_cfg.get("max_years", 1))
+        self.target_seniority = [s.lower() for s in exp_cfg.get("target_seniority", [])]
+        self.disallowed_seniority = [s.lower() for s in exp_cfg.get("disallowed_seniority", [])]
+
     def _load_profile(self) -> Dict[str, Any]:
         with open(self.profile_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -54,34 +60,88 @@ class Matcher:
                 return neg
         return None
 
-    def calculate_title_score(self, title: str) -> float:
-        """Scores job title against target roles and synonyms (0.0 to 1.0)."""
+    def check_seniority_filter(self, title: str) -> Optional[str]:
+        """Checks if title contains disallowed senior-level keywords."""
         title_lower = title.lower()
+        for term in self.disallowed_seniority:
+            if term in ("sr.", "sr"):
+                if re.search(r"\b(?:sr\.|sr)\b", title_lower):
+                    return term
+            elif term in ("iii", "iv", "v"):
+                if re.search(r"\b(?:iii|iv|v)\b", title_lower):
+                    return f"Level {term.upper()}"
+            elif match_keyword(term, title_lower):
+                return term
+        return None
+
+    def check_experience_requirement(self, text: str) -> Optional[int]:
+        """Extracts required experience years from description; returns years if > max_years."""
+        cleaned = re.sub(
+            r"(?:we have|our company has|in business for|established|founded)\s+\d+\+?\s*years",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+        pattern = (
+            r"(?:must have|should have|require[sd]?|minimum|at least|\b)\s*"
+            r"(\d+)\+?\s*(?:to|-)?\s*\d*\s*years?(?:\s+of)?\s+"
+            r"(?:relevant|professional|software|hands-on|industry|commercial|work|coding|development)?\s*experience"
+        )
+        matches = re.findall(pattern, cleaned, re.IGNORECASE)
+        years = [int(m) for m in matches if m.isdigit()]
+        if not years:
+            return None
+        min_required = min(years)
+        if min_required > self.max_years:
+            return min_required
+        return None
+
+    def check_target_seniority_bonus(self, title: str) -> bool:
+        """Checks if title explicitly targets candidate level (junior, entry-level, graduate)."""
+        title_lower = title.lower()
+        for term in self.target_seniority:
+            if match_keyword(term, title_lower):
+                return True
+        return False
+
+    def calculate_title_score(self, title: str) -> float:
+        """Scores job title against target roles, synonyms, and seniority bonus (0.0 to 1.0)."""
+        title_lower = title.lower()
+        base_score = 0.0
 
         # Exact target role match
         for role in self.target_roles:
             if match_keyword(role, title_lower):
-                return 1.0
+                base_score = 1.0
+                break
 
-        # Check role synonyms
-        for _, synonyms in self.role_synonyms.items():
-            for syn in synonyms:
-                if match_keyword(syn, title_lower):
-                    return 0.95
+        # Check role synonyms if no exact match
+        if base_score == 0.0:
+            for _, synonyms in self.role_synonyms.items():
+                for syn in synonyms:
+                    if match_keyword(syn, title_lower):
+                        base_score = 0.95
+                        break
+                if base_score > 0:
+                    break
 
-        # Partial token overlap
-        title_tokens = set(re.findall(r"\b[a-z]{3,}\b", title_lower))
-        role_tokens: Set[str] = set()
-        for r in self.target_roles:
-            role_tokens.update(re.findall(r"\b[a-z]{3,}\b", r))
+        # Partial token overlap if still 0
+        if base_score == 0.0:
+            title_tokens = set(re.findall(r"\b[a-z]{3,}\b", title_lower))
+            role_tokens: Set[str] = set()
+            for r in self.target_roles:
+                role_tokens.update(re.findall(r"\b[a-z]{3,}\b", r))
 
-        # Discard generic noise words
-        role_tokens -= {"developer", "engineer", "software"}
-        if not role_tokens:
-            return 0.0
+            role_tokens -= {"developer", "engineer", "software"}
+            if role_tokens:
+                overlap = len(title_tokens.intersection(role_tokens))
+                base_score = min(1.0, overlap * 0.4)
 
-        overlap = len(title_tokens.intersection(role_tokens))
-        return min(1.0, overlap * 0.4)
+        # Apply target seniority bonus (+15% for junior/entry-level/graduate)
+        if self.check_target_seniority_bonus(title):
+            base_score = min(1.0, base_score + 0.15) if base_score > 0 else 0.70
+
+        return base_score
 
     def calculate_skills_score(self, text: str, tags: List[str]) -> (float, List[str]):
         """Scores presence of primary skills in description & tags."""
@@ -131,7 +191,33 @@ class Matcher:
                 "matched_keywords": [],
             }
 
-        # 2. Component Scores
+        # 2. Hard Gate: Seniority Level in Title
+        hit_seniority = self.check_seniority_filter(job.title)
+        if hit_seniority:
+            return {
+                "job_id": job.id,
+                "score": 0.0,
+                "status": "DISCARDED",
+                "reason": f"Disqualified by seniority in title: '{hit_seniority}' (target: junior/entry-level/fresh graduate)",
+                "matched_primary": [],
+                "matched_synergy": [],
+                "matched_keywords": [],
+            }
+
+        # 3. Hard Gate: Experience Requirement
+        required_exp = self.check_experience_requirement(full_text)
+        if required_exp:
+            return {
+                "job_id": job.id,
+                "score": 0.0,
+                "status": "DISCARDED",
+                "reason": f"Requires {required_exp}+ years of experience (target: max {self.max_years} year)",
+                "matched_primary": [],
+                "matched_synergy": [],
+                "matched_keywords": [],
+            }
+
+        # 4. Component Scores
         title_score = self.calculate_title_score(job.title)
         skills_score, matched_primary = self.calculate_skills_score(full_text, job.tags)
         synergy_score, matched_synergy = self.calculate_synergy_score(full_text, job.tags)

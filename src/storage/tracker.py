@@ -14,7 +14,7 @@ except ImportError:
 class ApplicationTracker:
     def __init__(self, csv_path: str = 'data/applications.csv', webhook_url: Optional[str] = None):
         self.csv_path = csv_path
-        self.webhook_url = webhook_url or os.getenv("GOOGLE_SHEET_WEBHOOK_URL")
+        self.webhook_url = webhook_url if webhook_url is not None else os.getenv("GOOGLE_SHEET_WEBHOOK_URL")
         self.headers = [
             "date",
             "job_id",

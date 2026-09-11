@@ -25,6 +25,30 @@ def test_full_pipeline_flow():
     assert "react" in score_result["matched_keywords"]
     assert "node.js" in score_result["matched_keywords"]
 
+    # Seniority Gate Verification
+    senior_job = Job(
+        title="Senior Lead Full Stack Engineer",
+        company="BigCorp",
+        url="https://example.com/2",
+        description="React and Node.js developer.",
+        source="test",
+    )
+    senior_res = matcher.score_job(senior_job)
+    assert senior_res["status"] == "DISCARDED"
+    assert "Disqualified by seniority" in senior_res["reason"]
+
+    # Experience Gate Verification (> 1 year)
+    exp_job = Job(
+        title="Software Engineer",
+        company="MidCorp",
+        url="https://example.com/3",
+        description="React and Node.js developer. Minimum 4+ years of software experience required.",
+        source="test",
+    )
+    exp_res = matcher.score_job(exp_job)
+    assert exp_res["status"] == "DISCARDED"
+    assert "years of experience" in exp_res["reason"]
+
     # 3. CV Selection
     selector = Selector()
     cv_data = selector.select_for_job(score_result["matched_keywords"])
@@ -92,7 +116,7 @@ def test_full_pipeline_flow():
     test_csv = Path("output/test_applications.csv")
     if test_csv.exists():
         test_csv.unlink()
-    tracker = ApplicationTracker(csv_path=str(test_csv))
+    tracker = ApplicationTracker(csv_path=str(test_csv), webhook_url="")
     job_dict.update(routing_info)
     job_dict["cv_path"] = pdf_path
     tracker.log_job(job_dict)

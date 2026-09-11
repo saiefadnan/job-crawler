@@ -88,3 +88,32 @@ scoring_weights:
 thresholds:
   discard_below: 40.0
   qualified_above: 65.0
+
+experience_filter:
+  max_years: 1
+  target_seniority:
+    - "junior"
+    - "entry-level"
+    - "entry level"
+    - "associate"
+    - "graduate"
+    - "fresh graduate"
+    - "early career"
+    - "intern"
+    - "internship"
+  disallowed_seniority:
+    - "senior"
+    - "sr."
+    - "sr"
+    - "lead"
+    - "principal"
+    - "staff"
+    - "architect"
+    - "director"
+    - "manager"
+    - "head of"
+    - "vp"
+    - "chief"
+    - "mid-senior"
+    - "iii"
+    - "iv"
