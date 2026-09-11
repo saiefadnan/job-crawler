@@ -308,7 +308,7 @@ When execution completes, check the generated artifacts:
 
 ### 8. Automated Daily Runs via GitHub Actions (Cloud Execution)
 
-You do **not** need to keep your computer running. The repository includes a GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 09:00 UTC (or manually triggered via 1-click `workflow_dispatch`).
+You do **not** need to keep your computer running. The repository includes a GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 9:00 AM BST (03:00 UTC) (or manually triggered via 1-click `workflow_dispatch`).
 
 #### How Google Drive Saves CVs When Not Running Locally:
 1. **Remote PDF Compilation**: On the headless GitHub Actions runner (Ubuntu), Tectonic compiles each tailored 1-page ModernCV.

@@ -2,8 +2,8 @@ name: Daily Automated Job Search Pipeline
 
 on:
   schedule:
-    # Runs every day at 09:00 UTC (3:00 PM BST)
-    - cron: '0 9 * * *'
+    # Runs every day at 9:00 AM BST (03:00 UTC)
+    - cron: '0 3 * * *'
   workflow_dispatch: # Allows manual 1-click execution anytime from GitHub Actions tab
 
 permissions:
