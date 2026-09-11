@@ -1,12 +1,27 @@
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..cv_builder.latex_escaper import create_latex_jinja_env
 
 
 class CVRenderer:
     """Renders customized CVs to ModernCV .tex files using Jinja2."""
 
-    def __init__(self, template_name: str = "moderncv_classic_blue.tex.j2", template_dir: str = "templates"):
+    def __init__(
+        self,
+        template_name: Optional[str] = None,
+        template_dir: str = "templates",
+        profile_path: str = "data/profile.yaml",
+    ):
+        if not template_name:
+            import yaml
+            try:
+                with open(profile_path, "r", encoding="utf-8") as f:
+                    pdata = yaml.safe_load(f) or {}
+                    template_name = pdata.get("cv_template", "moderncv_classic_blue.tex.j2")
+            except Exception:
+                template_name = "moderncv_classic_blue.tex.j2"
+
+        self.template_name = template_name
         self.env = create_latex_jinja_env(template_dir=template_dir)
         self.template = self.env.get_template(template_name)
 

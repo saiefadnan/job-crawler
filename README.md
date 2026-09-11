@@ -196,7 +196,62 @@ Each project should include:
 
 ---
 
-### 5. Setup Google Sheets, Google Drive & Gmail Cloud Sync
+### 5. Defining & Customizing Your CV Template
+
+The pipeline renders your tailored CV using a Jinja2-powered LaTeX template located in the `templates/` directory.
+
+#### Selecting Your Active Template:
+You can specify the active template directly in `data/profile.yaml`:
+```yaml
+cv_template: "moderncv_classic_blue.tex.j2" # Filename inside templates/
+```
+
+#### Jinja2 LaTeX Syntax:
+Because LaTeX relies heavily on curly braces `{}` (e.g. `\section{...}`, `\textbf{...}`), the template engine uses custom delimiters to avoid syntax collisions:
+- **Variables**: `\VAR{candidate.name}` or `\VAR{proj.name | latex_escape}`
+- **Loops**: `\BLOCK{for exp in experience} ... \BLOCK{endfor}`
+- **Conditionals**: `\BLOCK{if exp.bullets} ... \BLOCK{endif}`
+- **Auto-Escaping Filter**: Always pipe dynamic strings through `| latex_escape` so LaTeX reserved characters (`&`, `%`, `_`, `#`, `$`, `{`, `}`) are safely escaped without crashing the compiler.
+
+#### Available Data Variables in the Template:
+The CV renderer automatically passes the following structured data into your template:
+
+| Variable | Type | Description |
+| :--- | :--- | :--- |
+| `candidate` | Dict | Full profile: `name`, `title`, `email`, `phone`, `location`, `github`, `linkedin`, `portfolio` |
+| `first_name`, `last_name` | String | Candidate's split first and last names |
+| `education` | List[Dict] | Education entries: `degree`, `institution`, `period`, `cgpa` |
+| `experience` | List[Dict] | Work experience: `role`, `company`, `period`, `location`, `bullets` |
+| `projects` | List[Dict] | Top matched projects (tailored to job keywords): `name`, `tech_stack`, `bullets` |
+| `cp` | Dict | Competitive programming stats: `solved_count`, `platforms`, `highlights` |
+| `certifications` | List[str] | List of certifications |
+
+#### ModernCV Styles & Colors:
+The default template (`templates/moderncv_classic_blue.tex.j2`) uses the clean `moderncv` package:
+- **Themes**: Switch `\moderncvstyle{classic}` to `casual`, `banking`, `oldstyle`, or `fancy`.
+- **Colors**: Switch `\moderncvcolor{blue}` to `orange`, `green`, `red`, `purple`, `grey`, or `black`.
+
+#### Strict 1-Page Layout Guarantee:
+To guarantee the output never overflows onto a second page:
+- Geometry margins: `\usepackage[scale=0.93, top=0.8cm, bottom=0.8cm, left=1.0cm, right=1.0cm]{geometry}`
+- Compact itemize lists: `\usepackage{enumitem}` with `\setlist[itemize]{leftmargin=*, nosep, topsep=1pt, itemsep=0.5pt}`
+- Hint column width: `\setlength{\hintscolumnwidth}{2.7cm}`
+- Page numbers suppressed: `\nopagenumbers{}`
+
+#### How to Add a New Custom Template:
+1. Duplicate the base template:
+   ```bash
+   cp templates/moderncv_classic_blue.tex.j2 templates/my_custom_cv.tex.j2
+   ```
+2. Modify layout, section order, or typography in `templates/my_custom_cv.tex.j2`.
+3. Set your new template in `data/profile.yaml`:
+   ```yaml
+   cv_template: "my_custom_cv.tex.j2"
+   ```
+
+---
+
+### 6. Setup Google Sheets, Google Drive & Gmail Cloud Sync
 
 The pipeline features a zero-cost cloud sync mechanism connecting Python with your personal Google Drive, Google Sheets, and Gmail using a lightweight Google Apps Script endpoint.
 
@@ -233,7 +288,7 @@ The pipeline is strictly **Local-First and Fault-Tolerant**:
 
 ---
 
-### 6. Run the Pipeline Locally
+### 7. Run the Pipeline Locally
 
 Run the pipeline from your terminal:
 
@@ -251,7 +306,7 @@ When execution completes, check the generated artifacts:
 
 ---
 
-### 7. Automated Daily Runs via GitHub Actions (Cloud Execution)
+### 8. Automated Daily Runs via GitHub Actions (Cloud Execution)
 
 You do **not** need to keep your computer running. The repository includes a GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 09:00 UTC (or manually triggered via 1-click `workflow_dispatch`).
 
@@ -272,7 +327,7 @@ You do **not** need to keep your computer running. The repository includes a Git
 
 ---
 
-### 8. Handling Applications: Your Daily Workflow
+### 9. Handling Applications: Your Daily Workflow
 
 Once the pipeline runs (either locally or on schedule in GitHub Actions):
 
