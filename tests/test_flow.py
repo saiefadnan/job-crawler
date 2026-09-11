@@ -89,8 +89,10 @@ def test_full_pipeline_flow():
     # 8. Tracking (CSV logging)
     import csv
     from src.storage.tracker import ApplicationTracker
-    test_csv = "output/test_applications.csv"
-    tracker = ApplicationTracker(csv_path=test_csv)
+    test_csv = Path("output/test_applications.csv")
+    if test_csv.exists():
+        test_csv.unlink()
+    tracker = ApplicationTracker(csv_path=str(test_csv))
     job_dict.update(routing_info)
     job_dict["cv_path"] = pdf_path
     tracker.log_job(job_dict)

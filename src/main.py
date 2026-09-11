@@ -74,6 +74,7 @@ def run_pipeline(limit: int = 1000):
             routing_info = router.route(job, pdf_path)
             job.update(routing_info)
             job["cv_path"] = pdf_path
+            job["drive_link"] = job.get("drive_link", "")
             tracker.log_job(job)
 
     if qualified_count == 0:
