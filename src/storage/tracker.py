@@ -100,6 +100,6 @@ class ApplicationTracker:
                     msg += f" [Gmail Draft Created]"
                 print(msg)
             else:
-                print(f"[Google Sheets Warning] Webhook returned status code {resp.status_code}")
+                print(f"[Google Sheets Warning] Webhook returned HTTP {resp.status_code}. Record safely preserved in local CSV.")
         except Exception as e:
-            print(f"[Google Sheets Warning] Failed to reach Google Sheet Webhook: {e}")
+            print(f"[Google Sheets Warning] Could not reach Webhook ({e}). Record safely preserved in local CSV.")

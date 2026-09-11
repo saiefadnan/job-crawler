@@ -225,6 +225,12 @@ The pipeline features a zero-cost cloud sync mechanism connecting Python with yo
 
 *(If left blank, the pipeline runs in offline mode, logging exclusively to local `data/applications.csv` and saving PDFs in `output/tailored_cvs/`.)*
 
+#### Graceful Local Fallback (Local-First Architecture):
+The pipeline is strictly **Local-First and Fault-Tolerant**:
+- **100% Persisted Locally First**: Every tailored CV PDF (`output/tailored_cvs/`), email pitch draft (`output/email_drafts/`), ATS review item (`output/pending_review.md`), and tracking record (`data/applications.csv`) is written to local disk **before** any network call is attempted.
+- **Graceful Cloud Failure Handling**: If `GOOGLE_SHEET_WEBHOOK_URL` is omitted, your network connection drops, or Google services experience timeouts/outages, the pipeline automatically catches the error, outputs a safe warning, and continues uninterrupted. No jobs or PDFs are ever lost.
+- **Manual Catch-Up Sync**: If you run offline or during a network outage, you can import `data/applications.csv` into your Google Sheet anytime later, upload your local PDFs into the `Job_CVs` folder in Google Drive, and run `generateDriveLinksAndSync()` in Apps Script to backfill all Drive links and create Gmail drafts in one click.
+
 ---
 
 ### 6. Run the Pipeline Locally
