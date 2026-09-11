@@ -1,0 +1,67 @@
+name: Daily Automated Job Search Pipeline
+
+on:
+  schedule:
+    # Runs every day at 09:00 UTC (3:00 PM BST)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allows manual 1-click execution anytime from GitHub Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Tectonic (LaTeX Compiler)
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
+          sudo mv tectonic /usr/local/bin/
+          tectonic --version
+
+      - name: Run Integration Tests
+        run: |
+          pytest tests/ -v
+
+      - name: Execute Autonomous Job Search Pipeline
+        env:
+          GOOGLE_SHEET_WEBHOOK_URL: ${{ secrets.GOOGLE_SHEET_WEBHOOK_URL }}
+        run: |
+          python -m src.main
+
+      - name: Upload Output Artifacts (PDFs & Review Digests)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tailored-cvs-${{ github.run_id }}
+          path: output/
+          retention-days: 14
+
+      - name: Commit and Push Updated Application Logs & Cache
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/applications.csv data/processed_cache.json
+          if git diff --staged --quiet; then
+            echo "No cache or log updates to commit."
+          else
+            git commit -m "chore(auto): update applications log and deduplication cache [skip ci]"
+            git push
+          fi

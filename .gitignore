@@ -35,7 +35,6 @@ htmlcov/
 # Local cache / outputs
 output/
 *.pdf
-data/processed_cache.json
 
 # IDE
 .idea/
