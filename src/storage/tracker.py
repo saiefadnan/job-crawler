@@ -71,13 +71,34 @@ class ApplicationTracker:
 
         # 2. Sync to Google Sheets via Webhook (if configured)
         if self.webhook_url:
-            self._sync_to_webhook(row)
+            payload = dict(row)
+            cv_path = payload.get("cv_path")
+            if cv_path and os.path.exists(cv_path):
+                try:
+                    import base64
+                    with open(cv_path, "rb") as f:
+                        payload["pdf_base64"] = base64.b64encode(f.read()).decode("utf-8")
+                    payload["cv_filename"] = os.path.basename(cv_path)
+                except Exception as e:
+                    print(f"[Warning] Failed to encode PDF for cloud sync: {e}")
+
+            self._sync_to_webhook(payload)
 
     def _sync_to_webhook(self, row: Dict[str, Any]):
         try:
-            resp = requests.post(self.webhook_url, json=row, timeout=10, allow_redirects=True)
+            resp = requests.post(self.webhook_url, json=row, timeout=15, allow_redirects=True)
             if resp.status_code in (200, 302):
-                print(f"[Google Sheets] Synced '{row.get('company')} - {row.get('title')}' directly to Google Sheet!")
+                data = {}
+                try:
+                    data = resp.json()
+                except Exception:
+                    pass
+                msg = f"[Google Sheets] Synced '{row.get('company')} - {row.get('title')}' directly to Google Sheet!"
+                if data.get("drive_link"):
+                    msg += f" (Drive: {data.get('drive_link')})"
+                if data.get("apply_status") == "GMAIL_DRAFT_CREATED":
+                    msg += f" [Gmail Draft Created]"
+                print(msg)
             else:
                 print(f"[Google Sheets Warning] Webhook returned status code {resp.status_code}")
         except Exception as e:

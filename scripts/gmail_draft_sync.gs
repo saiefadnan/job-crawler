@@ -190,6 +190,57 @@ function doPost(e) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const contents = JSON.parse(e.postData.contents);
 
+    let driveLink = contents.drive_link || "";
+    let cvFile = null;
+
+    // 1. If base64 PDF is transmitted (e.g. from GitHub Actions runner or local CLI), save to Google Drive
+    if (contents.pdf_base64 && contents.cv_filename) {
+      try {
+        const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
+        const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(CV_FOLDER_NAME);
+        const blob = Utilities.newBlob(
+          Utilities.base64Decode(contents.pdf_base64),
+          "application/pdf",
+          contents.cv_filename
+        );
+        cvFile = folder.createFile(blob);
+        cvFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        driveLink = cvFile.getUrl();
+        contents.drive_link = driveLink;
+      } catch (driveErr) {
+        Logger.log("[Drive Upload Warning] " + driveErr.message);
+      }
+    }
+
+    // 2. If email application, automatically create ready-to-send draft in Gmail with attached PDF
+    if (contents.apply_method === "email" && contents.email_to) {
+      try {
+        let emailBody = contents.email_body || "";
+        if (driveLink && !emailBody.includes(driveLink)) {
+          emailBody = emailBody.replace(
+            "I have attached my tailored CV for your review.",
+            "You can view/download my tailored CV directly here:\n" + driveLink + "\n\n(I have also attached the PDF for your convenience)."
+          );
+          contents.email_body = emailBody;
+        }
+
+        const draftOptions = {};
+        if (cvFile) {
+          draftOptions.attachments = [cvFile.getAs(MimeType.PDF)];
+        }
+
+        GmailApp.createDraft(
+          contents.email_to,
+          contents.email_subject || "Job Application",
+          emailBody,
+          draftOptions
+        );
+        contents.apply_status = "GMAIL_DRAFT_CREATED";
+      } catch (gmailErr) {
+        Logger.log("[Gmail Draft Warning] " + gmailErr.message);
+      }
+    }
+
     const defaultHeaders = [
       "date", "job_id", "company", "title", "score", "status",
       "url", "matched_keywords", "cv_path", "drive_link",
@@ -216,7 +267,12 @@ function doPost(e) {
     sheet.appendRow(newRow);
 
     return ContentService.createTextOutput(
-      JSON.stringify({ status: "success", message: "Row appended successfully" })
+      JSON.stringify({ 
+        status: "success", 
+        message: "Row appended successfully", 
+        drive_link: driveLink,
+        apply_status: contents.apply_status 
+      })
     ).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {

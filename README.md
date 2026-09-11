@@ -196,35 +196,40 @@ Each project should include:
 
 ---
 
-### 5. (Optional) Setup Google Sheets & Cloud Sync
+### 5. Setup Google Sheets, Google Drive & Gmail Cloud Sync
 
-If you want live sync to a Google Sheet and automated Gmail drafts:
+The pipeline features a zero-cost cloud sync mechanism connecting Python with your personal Google Drive, Google Sheets, and Gmail using a lightweight Google Apps Script endpoint.
 
+#### How It Works:
+- **Automatic Google Drive Upload (Local or Cloud)**: When running either locally or in headless CI (GitHub Actions), Python base64-encodes each compiled 1-page CV PDF and transmits it via the webhook. The script automatically creates/finds a `Job_CVs` folder in your Google Drive, saves the PDF, sets shareable view permissions, and records the `drive_link` in your Google Sheet.
+- **Automated Gmail Draft Generation**: For qualified jobs accepting email applications (`apply_method == 'email'`), the script automatically calls `GmailApp.createDraft()`. It creates a ready-to-send draft in your Gmail account with the customized cover pitch, candidate signature, and the tailored CV PDF attached.
+
+#### Step-by-Step Setup:
 1. Create a new [Google Sheet](https://sheets.new).
 2. Click **Extensions > Apps Script**.
-3. Delete any code in the editor and paste the entire contents of [`scripts/gmail_draft_sync.gs`](scripts/gmail_draft_sync.gs).
+3. Delete any boilerplate code and paste the entire contents of [`scripts/gmail_draft_sync.gs`](scripts/gmail_draft_sync.gs).
 4. Click **Deploy > New deployment**:
    - Select type: **Web app**
-   - Description: `Job Search Webhook`
+   - Description: `Job Tracker Webhook`
    - Execute as: **Me**
-   - Who has access: **Anyone**
-5. Click **Deploy**, authorize permissions, and copy the provided **Web App URL**.
-6. Create your local `.env` file:
+   - Who has access: **Anyone** *(Required so Python on your PC or GitHub Actions can post without OAuth prompt)*
+5. Click **Deploy**, authorize permissions with your Google account, and copy the provided **Web App URL** (`https://script.google.com/macros/s/.../exec`).
+6. Set your local `.env` file:
    ```bash
    cp .env.example .env
    ```
-7. Open `.env` and set:
+7. Open `.env` and paste your URL:
    ```env
    GOOGLE_SHEET_WEBHOOK_URL="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
    ```
 
-*(If left blank, the pipeline will log exclusively to local `data/applications.csv`.)*
+*(If left blank, the pipeline runs in offline mode, logging exclusively to local `data/applications.csv` and saving PDFs in `output/tailored_cvs/`.)*
 
 ---
 
 ### 6. Run the Pipeline Locally
 
-Run the orchestrator:
+Run the pipeline from your terminal:
 
 ```bash
 python -m src.main
@@ -233,31 +238,56 @@ python -m src.main
 When execution completes, check the generated artifacts:
 - **`output/tailored_cvs/`**: Tailored 1-page ModernCV PDF for each qualified match.
 - **`output/email_drafts/`**: Personalized email pitch files for email-based applications.
-- **`output/pending_review.md`**: Markdown digest with direct links to apply on Greenhouse/Lever/LinkedIn.
+- **`output/pending_review.md`**: Markdown digest with 1-click apply links for ATS systems (Greenhouse, Lever, LinkedIn).
 - **`data/applications.csv`**: Local tracking log of every job evaluated, its score, reason, and status.
-- **`data/processed_cache.json`**: Updated deduplication cache.
+- **`data/processed_cache.json`**: Updated 30-day rolling deduplication cache.
+- **Google Sheet & Gmail**: If configured, new rows appear instantly in your Sheet with Drive links, and email drafts appear in your Gmail Drafts folder.
 
 ---
 
-### 7. Automated Daily Runs via GitHub Actions
+### 7. Automated Daily Runs via GitHub Actions (Cloud Execution)
 
-The repository includes a ready-to-use GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 09:00 UTC.
+You do **not** need to keep your computer running. The repository includes a GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 09:00 UTC (or manually triggered via 1-click `workflow_dispatch`).
 
-To enable it:
-1. Push your repository to GitHub.
-2. Go to **Settings > Secrets and variables > Actions**.
-3. Add a **New repository secret**:
-   - Name: `GOOGLE_SHEET_WEBHOOK_URL`
-   - Value: Your Google Apps Script Web App URL
-4. The workflow will:
-   - Run integration tests
-   - Execute the pipeline
-   - Compile tailored CVs with Tectonic
-   - Post results to your Google Sheet
-   - Commit updated cache and CSV logs back to `main`
-   - Upload all generated PDFs as downloadable GitHub workflow artifacts
+#### How Google Drive Saves CVs When Not Running Locally:
+1. **Remote PDF Compilation**: On the headless GitHub Actions runner (Ubuntu), Tectonic compiles each tailored 1-page ModernCV.
+2. **Direct Cloud Transmission**: `ApplicationTracker` reads the compiled PDF bytes, encodes them in base64, and POSTs them inside the JSON payload to your Google Apps Script webhook.
+3. **Google Drive Storage**: Google Apps Script receives the payload, saves the file directly into your personal Google Drive (`Job_CVs`), and generates a public view link (`drive_link`).
+4. **Gmail Draft with Attachment**: If the role accepts email applications, Google Apps Script attaches the PDF directly to a draft in your Gmail inbox.
+5. **Workflow Artifact Archive**: In addition, GitHub Actions archives all generated PDFs as a downloadable zip artifact (`tailored-cvs-<run_id>`) under the **Actions** tab (retained for 14 days).
 
-You can also trigger it manually at any time by clicking **Run workflow** under the **Actions** tab.
+#### Enabling GitHub Actions:
+1. Push your repository to GitHub (public or private).
+2. Navigate to **Settings > Secrets and variables > Actions**.
+3. Click **New repository secret**:
+   - **Name**: `GOOGLE_SHEET_WEBHOOK_URL`
+   - **Value**: Your Google Apps Script Web App URL
+4. Under the **Actions** tab, click **Daily Automated Job Search Pipeline** > **Run workflow** to test execution.
+
+---
+
+### 8. Handling Applications: Your Daily Workflow
+
+Once the pipeline runs (either locally or on schedule in GitHub Actions):
+
+#### Branch A: Email Applications (Gmail Drafts)
+1. Open your regular Gmail (web or mobile).
+2. Go to your **Drafts** folder.
+3. You will see pre-populated drafts addressed to recruiter emails with:
+   - Customized subject line: `Application: [Job Title] - [Your Name]`
+   - Tailored pitch highlighting your matching skills and authentic projects.
+   - Your compiled 1-page ModernCV PDF attached.
+   - Clickable Google Drive fallback link in the body.
+4. Review the draft (10 seconds), make any personal tweaks, and hit **Send**.
+
+#### Branch B: ATS Applications (1-Click Queue)
+1. Open `output/pending_review.md` (or your Google Sheet).
+2. Each qualified role includes:
+   - Company & Job Title
+   - Direct Apply URL (Greenhouse, Lever, Workday, LinkedIn)
+   - Path to your tailored 1-page CV PDF (or clickable Google Drive link)
+3. Click the application link, upload your tailored CV, and submit.
+
 
 ---
 
