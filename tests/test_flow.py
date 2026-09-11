@@ -136,6 +136,22 @@ def test_full_pipeline_flow():
         assert "TechCorp" in reader[1]["email_body"]
         assert reader[1]["draft_path"] != ""
 
+    # Clean up test files created by test_full_pipeline_flow
+    for ext in ("aux", "log", "out", "pdf", "tex"):
+        p = Path(f"output/Stripe_Test_CV.{ext}")
+        if p.exists():
+            p.unlink()
+    if test_csv.exists():
+        test_csv.unlink()
+    if Path(email_route_info["draft_path"]).exists():
+        Path(email_route_info["draft_path"]).unlink()
+
+    # Reset pending_review.md to clean header
+    review_path = Path("output/pending_review.md")
+    if review_path.exists():
+        with open(review_path, "w", encoding="utf-8") as f:
+            f.write("# Pending ATS Applications Review Queue\n\n| Company | Role | Match Score | Apply Link | Tailored CV PDF |\n| :--- | :--- | :---: | :--- | :--- |\n")
+
     print("\n[PASS] Routing and CSV tracking verified successfully!")
 
 
@@ -191,6 +207,9 @@ def test_duplicator_cache():
     assert "active_job_hash" in saved_data["entries"]
     assert "old_job_hash" not in saved_data["entries"]  # Pruned!
     assert saved_data["total_active"] == 2
+
+    if cache_path.exists():
+        cache_path.unlink()
 
 
 def test_storage_30_day_cleanup():
