@@ -10,9 +10,18 @@ class Duplicator:
     def load_cache(self) -> set[str]:
         try:
             with open(self.cache_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                content = f.read().strip()
+                if not content:
+                    return set()
+                data = json.loads(content)
                 return set(data.get("seen_ids", []))
         except FileNotFoundError:
+            return set()
+        except json.JSONDecodeError:
+            print("[Warning] Cache file was empty or corrupted. Re-initializing cache.")
+            return set()
+        except Exception as e:
+            print(f"[Warning] Unexpected error reading cache: {e}. Starting with empty cache.")
             return set()
         
     def filter_new(self, jobs: list[Job]) -> list[Job]:

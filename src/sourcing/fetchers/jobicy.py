@@ -1,12 +1,19 @@
+import sys
+from pathlib import Path
 
-from ..duplicator import Duplicator
-from ..base import BaseFetcher
-from ..models import Job
+# Ensure project root is in sys.path when running script directly
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from src.sourcing.base import BaseFetcher
+from src.sourcing.models import Job
+
 
 class JobicyFetcher(BaseFetcher):
     API_URL = "https://jobicy.com/api/v2/remote-jobs"
 
-    def fetch_jobs(self, limit: int= 50)-> list[Job]:
+    def fetch_jobs(self, limit: int= 10)-> list[Job]:
         response = self.session.get(self.API_URL, timeout=self.timeout);
         response.raise_for_status()
         jobs_data = response.json()
@@ -29,18 +36,3 @@ class JobicyFetcher(BaseFetcher):
 
         print(f"Fetched {len(jobs)} jobs from Jobicy.")
         return jobs
-
-
-if __name__ == '__main__':
-    fetcher = JobicyFetcher()
-    results = fetcher.fetch_jobs(limit=10)
-    
-    duplicator = Duplicator()
-
-    new_jobs = duplicator.filter_new(results)
-    duplicator.commit(new_jobs)
-
-    print(f"Found {len(new_jobs)} new jobs.")
-    for j in new_jobs:
-        print(f"[{j.id}] {j.title} @ {j.company} ({j.url})")
-        

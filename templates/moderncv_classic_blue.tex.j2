@@ -1,0 +1,90 @@
+\documentclass[10pt,a4paper,sans]{moderncv}
+
+% ModernCV themes
+\moderncvstyle{classic}
+\moderncvcolor{blue}
+
+% Page geometry & fonts
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[scale=0.93, top=0.8cm, bottom=0.8cm, left=1.0cm, right=1.0cm]{geometry}
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=*, nosep, topsep=1pt, partopsep=0pt, parsep=0pt, itemsep=0.5pt}
+
+% Layout tuning for clean 1-page alignment
+\setlength{\hintscolumnwidth}{2.7cm}
+\nopagenumbers{}
+
+% Personal data
+\name{\VAR{first_name}}{\VAR{last_name}}
+\title{\VAR{candidate.title | latex_escape}}
+\address{\VAR{candidate.location | latex_escape}}{}{}
+\phone[mobile]{\VAR{candidate.phone | latex_escape}}
+\email{\VAR{candidate.email | latex_escape}}
+\social[github]{\VAR{candidate.github | replace('https://github.com/', '') | replace('github.com/', '') | latex_escape}}
+\social[linkedin]{\VAR{candidate.linkedin | replace('https://www.linkedin.com/in/', '') | replace('https://linkedin.com/in/', '') | replace('linkedin.com/in/', '') | latex_escape}}
+
+\begin{document}
+
+\makecvtitle
+\vspace{-2.3em}
+
+% Education Section
+\section{Education}
+\BLOCK{for edu in education}
+\cventry{\VAR{edu.period}}{\VAR{edu.degree | latex_escape}}{\VAR{edu.institution | latex_escape}}{}{}{CGPA: \textbf{\VAR{edu.cgpa}}}
+\BLOCK{endfor}
+
+% Professional Experience Section
+\section{Professional Experience}
+\BLOCK{for exp in experience}
+\cventry{\VAR{exp.period}}{\VAR{exp.role | latex_escape}}{\VAR{exp.company | latex_escape}}{\VAR{exp.location | latex_escape}}{}{%
+\begin{minipage}[t]{\linewidth}%
+\begin{itemize}%
+\BLOCK{for b in exp.bullets}%
+\item \VAR{b.text | latex_escape}
+\BLOCK{endfor}%
+\end{itemize}%
+\end{minipage}%
+}
+\BLOCK{endfor}
+
+% Key Projects (Dynamically tailored by selector)
+\section{Key Projects}
+\BLOCK{for proj in projects}
+\cvitem{\textbf{\VAR{proj.name | latex_escape}}}{%
+\begin{minipage}[t]{\linewidth}%
+\textit{\VAR{', '.join(proj.tech_stack) | latex_escape}}
+\begin{itemize}%
+\BLOCK{for b in proj.bullets}%
+\item \VAR{b.text | latex_escape}
+\BLOCK{endfor}%
+\end{itemize}%
+\vspace{0.15em}%
+\end{minipage}%
+}
+\BLOCK{endfor}
+
+% Technical Skills
+\section{Technical Skills}
+\cvitem{Languages}{Java, JavaScript, Python, C/C++, Dart}
+\cvitem{Web Technologies}{React.js, Node.js, Express.js, Hono, Socket.io, REST APIs, HTML5, CSS3}
+\cvitem{Databases}{PostgreSQL, MongoDB, Oracle, Supabase, Firebase}
+\cvitem{Mobile \& AI}{Flutter, Riverpod, Hugging Face Transformers, NLP, RAG, Streamlit}
+\cvitem{Tools \& Concepts}{Git/GitHub, Docker (Basic), OAuth 2.0, RBAC, WebSockets, WebRTC}
+
+% Competitive Programming
+\section{Competitive Programming}
+\cvitem{Problem Solving}{\textbf{\VAR{cp.total_solved}} problems solved across competitive platforms (Codeforces: 240, VJudge: 220, LeetCode: 81)}
+
+% Certifications & Achievements (2-column balanced layout)
+\section{Achievements \& Certifications}
+\BLOCK{for i in range(0, certifications|length, 2)}
+\BLOCK{if i + 1 < certifications|length}
+\cvlistdoubleitem{\VAR{certifications[i] | latex_escape}}{\VAR{certifications[i+1] | latex_escape}}
+\BLOCK{else}
+\cvlistitem{\VAR{certifications[i] | latex_escape}}
+\BLOCK{endif}
+\BLOCK{endfor}
+
+\end{document}

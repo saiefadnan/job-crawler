@@ -1,0 +1,3 @@
+date,job_id,company,title,score,status,url,matched_keywords,cv_path,apply_method,email_to,email_subject,email_body,draft_path,apply_status
+2026-09-11 22:45:37,5051167e4e848706,ExtraHop,Software Engineer III | AI/ML,84.38,QUALIFIED,https://jobicy.com/jobs/153029-software-engineer-iii-ai-ml,"docker, git, postgresql, python, react",E:\my_projects\job-search\output\ExtraHop_SoftwareEngineerIIIAIML_CV.pdf,ats,,,,,ATS_PENDING_REVIEW
+2026-09-11 22:45:40,632145555b903d48,Grove Collaborative,"Senior Software Engineer, Front End / Full Stack",70.0,QUALIFIED,https://jobicy.com/jobs/153047-senior-software-engineer-front-end-full-stack,"git, javascript, react",E:\my_projects\job-search\output\GroveCollaborative_SeniorSoftwareEnginee_CV.pdf,ats,,,,,ATS_PENDING_REVIEW
