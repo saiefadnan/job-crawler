@@ -76,7 +76,13 @@ class ApplicationTracker:
 
             webhook_resp = self._sync_to_webhook(payload)
             if webhook_resp.get("drive_link"):
-                row["drive_link"] = webhook_resp["drive_link"]
+                drive_url = webhook_resp["drive_link"]
+                row["drive_link"] = drive_url
+                row["cv_path"] = drive_url
+                # Immediately delete local PDF, TeX, and auxiliary compilation files
+                self.delete_local_cv_artifacts(cv_path, payload.get("tex_path"))
+                self._update_pending_review_link(cv_path, drive_url)
+
             if webhook_resp.get("apply_status") == "GMAIL_DRAFT_CREATED":
                 row["apply_status"] = "GMAIL_DRAFT_CREATED"
 
@@ -112,6 +118,54 @@ class ApplicationTracker:
         except Exception as e:
             print(f"[Google Sheets Warning] Could not reach Webhook ({e}). Record safely preserved in local CSV.")
         return resp_data
+
+    @staticmethod
+    def delete_local_cv_artifacts(cv_path: Optional[str] = None, tex_path: Optional[str] = None):
+        """
+        Immediately deletes local PDF, TeX, and auxiliary compilation files
+        after successful upload to Google Drive.
+        """
+        if not cv_path and not tex_path:
+            return
+
+        from pathlib import Path
+        targets = set()
+        for p_str in (cv_path, tex_path):
+            if not p_str:
+                continue
+            base = Path(p_str)
+            targets.add(base)
+            # Add all auxiliary files associated with this job's CV stem
+            for ext in (".pdf", ".tex", ".aux", ".log", ".out", ".fls", ".fdb_latexmk"):
+                targets.add(base.with_suffix(ext))
+
+        deleted = []
+        for file_path in targets:
+            try:
+                if file_path.is_file() and file_path.exists():
+                    file_path.unlink()
+                    deleted.append(file_path.name)
+            except Exception as e:
+                print(f"[Warning] Could not delete local artifact {file_path.name}: {e}")
+
+        if deleted:
+            print(f"[Cloud Storage] Uploaded to Google Drive. Cleaned up local artifacts: {', '.join(deleted)}")
+
+    @staticmethod
+    def _update_pending_review_link(old_cv_path: Optional[str], drive_link: str, digest_path: str = "output/pending_review.md"):
+        """Updates the local pending_review.md markdown file to link to the Google Drive PDF instead of the deleted local file."""
+        if not old_cv_path or not drive_link:
+            return
+        from pathlib import Path
+        digest_file = Path(digest_path)
+        if digest_file.exists():
+            try:
+                content = digest_file.read_text(encoding="utf-8")
+                if old_cv_path in content:
+                    updated = content.replace(f"`{old_cv_path}`", f"[Drive PDF]({drive_link})")
+                    digest_file.write_text(updated, encoding="utf-8")
+            except Exception as e:
+                print(f"[Warning] Could not update review link in {digest_path}: {e}")
 
     def prune_local_records(self, ttl_days: int = 30) -> int:
         """Prunes rows from applications.csv older than ttl_days."""

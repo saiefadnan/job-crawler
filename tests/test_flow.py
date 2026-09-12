@@ -321,8 +321,50 @@ def test_location_and_remote_gate():
     assert res_remote["is_local"] is False
 
 
+def test_delete_local_cv_artifacts():
+    from src.storage.tracker import ApplicationTracker
+    Path("output").mkdir(parents=True, exist_ok=True)
+    
+    # 1. Create dummy compilation files
+    test_files = [
+        Path("output/test_cleanup_CV.pdf"),
+        Path("output/test_cleanup_CV.tex"),
+        Path("output/test_cleanup_CV.aux"),
+        Path("output/test_cleanup_CV.log"),
+    ]
+    for f in test_files:
+        f.write_text("dummy test content", encoding="utf-8")
+        assert f.exists()
+
+    # 2. Trigger deletion
+    ApplicationTracker.delete_local_cv_artifacts(
+        cv_path="output/test_cleanup_CV.pdf",
+        tex_path="output/test_cleanup_CV.tex"
+    )
+
+    # 3. Verify all artifacts deleted
+    for f in test_files:
+        assert not f.exists()
+
+    # 4. Verify review link update in pending_review.md
+    digest_path = Path("output/test_pending_review.md")
+    digest_path.write_text("| **Acme** | Dev | 80% | [Link](url) | `output/test_cleanup_CV.pdf` |\n", encoding="utf-8")
+    ApplicationTracker._update_pending_review_link(
+        old_cv_path="output/test_cleanup_CV.pdf",
+        drive_link="https://drive.google.com/file/d/test12345/view",
+        digest_path=str(digest_path)
+    )
+    content = digest_path.read_text(encoding="utf-8")
+    assert "[Drive PDF](https://drive.google.com/file/d/test12345/view)" in content
+    assert "`output/test_cleanup_CV.pdf`" not in content
+
+    if digest_path.exists():
+        digest_path.unlink()
+
+
 if __name__ == "__main__":
     test_full_pipeline_flow()
     test_duplicator_cache()
     test_storage_30_day_cleanup()
     test_location_and_remote_gate()
+    test_delete_local_cv_artifacts()
