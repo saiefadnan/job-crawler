@@ -74,6 +74,8 @@ def test_full_pipeline_flow():
     compiler = TectonicCompiler()
     pdf_path = compiler.compile(tex_path, output_dir="output")
     assert pdf_path.endswith(".pdf")
+    if compiler.is_latex_available:
+        assert Path(pdf_path).stat().st_size > 5000, f"Generated PDF is unexpectedly small ({Path(pdf_path).stat().st_size} bytes), possible blank compilation!"
     print(f"\n[PASS] End-to-end flow verified! Generated PDF at: {pdf_path}")
 
     # 6. Routing (ATS queue)

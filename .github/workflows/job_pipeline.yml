@@ -31,11 +31,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Tectonic (LaTeX Compiler)
+      - name: Install LaTeX Compiler (pdflatex & Tectonic)
         run: |
-          curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
-          sudo mv tectonic /usr/local/bin/
-          tectonic --version
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-latex-recommended \
+            texlive-fonts-recommended \
+            texlive-fonts-extra
+          which pdflatex
+          pdflatex --version
+          # Install Tectonic as secondary compiler option
+          curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh || true
+          if [ -f tectonic ]; then sudo mv tectonic /usr/local/bin/ && tectonic --version || true; fi
 
       - name: Run Integration Tests
         run: |

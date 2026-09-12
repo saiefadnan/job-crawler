@@ -8,22 +8,24 @@ logger = logging.getLogger(__name__)
 
 
 class TectonicCompiler:
-    """Compiles .tex files to .pdf using Tectonic or pdflatex.
+    """Compiles .tex files to real .pdf documents using pdflatex or Tectonic.
 
-    Falls back to generating a mock PDF when run locally without a working LaTeX setup,
-    allowing frictionless local development while compiling real PDFs in GitHub Actions.
+    Multi-engine strategy:
+    1. Tries pdflatex (fast, native font packages like fontawesome5/lmodern pre-installed).
+    2. Tries Tectonic (modern Rust-based engine with on-the-fly package fetching).
+    3. If neither engine is installed on the machine, falls back to a mock PDF for offline test suites.
     """
 
     def __init__(self):
-        self.tectonic_path = shutil.which("tectonic")
         self.pdflatex_path = shutil.which("pdflatex")
+        self.tectonic_path = shutil.which("tectonic")
 
     @property
     def is_latex_available(self) -> bool:
-        return bool(self.tectonic_path or self.pdflatex_path)
+        return bool(self.pdflatex_path or self.tectonic_path)
 
     def _create_mock_pdf(self, pdf_path: Path) -> str:
-        """Writes a minimal valid PDF binary for local pipeline testing."""
+        """Writes a minimal valid PDF binary for local pipeline testing without LaTeX."""
         mock_content = (
             b"%PDF-1.4\n"
             b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
@@ -37,7 +39,7 @@ class TectonicCompiler:
         return str(pdf_path)
 
     def compile(self, tex_file_path: str, output_dir: str = "output") -> str:
-        """Compiles a .tex file into a .pdf and returns the output .pdf path."""
+        """Compiles a .tex file into a real .pdf and returns the output .pdf path."""
         tex_path = Path(tex_file_path).resolve()
         if not tex_path.exists():
             raise FileNotFoundError(f"LaTeX file not found at: {tex_path}")
@@ -47,47 +49,72 @@ class TectonicCompiler:
         pdf_name = tex_path.stem + ".pdf"
         pdf_path = out_dir / pdf_name
 
-        if self.tectonic_path:
-            logger.info(f"Compiling {tex_path.name} with Tectonic...")
-            try:
-                cmd = [self.tectonic_path, str(tex_path), "--outdir", str(out_dir)]
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                if result.returncode == 0 and pdf_path.exists():
-                    return str(pdf_path)
-                logger.warning(f"Tectonic returned code {result.returncode}. Falling back to mock PDF.")
-            except subprocess.SubprocessError as e:
-                logger.warning(f"Tectonic subprocess failed: {e}. Falling back to mock PDF.")
-            except Exception as e:
-                logger.warning(f"Unexpected error running Tectonic: {e}. Falling back to mock PDF.")
+        errors = []
 
-        elif self.pdflatex_path:
-            logger.info(f"Compiling {tex_path.name} with pdflatex...")
+        # 1. Primary Engine: pdflatex (Standard for Jake's & ModernCV with font packages)
+        if self.pdflatex_path:
             try:
                 cmd = [
                     self.pdflatex_path,
                     "-interaction=nonstopmode",
+                    "-halt-on-error",
                     f"-output-directory={out_dir}",
                     str(tex_path),
                 ]
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                if result.returncode == 0 and pdf_path.exists():
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(tex_path.parent),
+                )
+                if result.returncode == 0 and pdf_path.exists() and pdf_path.stat().st_size > 1000:
                     return str(pdf_path)
-                logger.warning(f"Local pdflatex issue: {result.stderr.strip()[:100]}. Falling back to mock PDF.")
-            except subprocess.SubprocessError as e:
-                logger.warning(f"pdflatex subprocess failed: {e}. Falling back to mock PDF.")
-            except Exception as e:
-                logger.warning(f"Unexpected error running pdflatex: {e}. Falling back to mock PDF.")
 
-        logger.info(f"Generated PDF at {pdf_path}")
+                err_snippet = result.stderr.strip() or result.stdout[-500:].strip()
+                errors.append(f"pdflatex failed (exit code {result.returncode}): {err_snippet}")
+            except Exception as e:
+                errors.append(f"pdflatex execution error: {e}")
+
+        # 2. Secondary Engine: Tectonic
+        if self.tectonic_path:
+            try:
+                cmd = [self.tectonic_path, str(tex_path), "--outdir", str(out_dir)]
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(tex_path.parent),
+                )
+                if result.returncode == 0 and pdf_path.exists() and pdf_path.stat().st_size > 1000:
+                    return str(pdf_path)
+
+                err_snippet = result.stderr.strip() or result.stdout[-500:].strip()
+                errors.append(f"Tectonic failed (exit code {result.returncode}): {err_snippet}")
+            except Exception as e:
+                errors.append(f"Tectonic execution error: {e}")
+
+        # If a compiler is installed but failed, report the exact errors
+        if self.is_latex_available:
+            for err in errors:
+                print(f"[Compiler Warning] {err}")
+            # Check if a partial or previous compilation succeeded
+            if pdf_path.exists() and pdf_path.stat().st_size > 1000:
+                return str(pdf_path)
+            raise RuntimeError(
+                f"LaTeX compilation failed for {tex_path.name}!\n" + "\n".join(errors)
+            )
+
+        # 3. Fallback for environments with NO LaTeX installed (e.g., bare dev machine testing)
+        print(f"[Compiler Warning] No LaTeX engine (pdflatex/tectonic) found on system. Generating mock PDF for testing.")
         return self._create_mock_pdf(pdf_path)
 
 
 if __name__ == "__main__":
     compiler = TectonicCompiler()
-    print(f"LaTeX engine available locally: {compiler.is_latex_available}")
+    print(f"LaTeX engine available: {compiler.is_latex_available}")
+    if compiler.pdflatex_path:
+        print(f"Found pdflatex at: {compiler.pdflatex_path}")
     if compiler.tectonic_path:
         print(f"Found Tectonic at: {compiler.tectonic_path}")
-    elif compiler.pdflatex_path:
-        print(f"Found pdflatex at: {compiler.pdflatex_path}")
-    else:
-        print("Using local mock compiler (Tectonic will be used inside GitHub Actions runner).")
+    if not compiler.is_latex_available:
+        print("No LaTeX compiler found. Mock compiler will be used.")

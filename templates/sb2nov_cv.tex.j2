@@ -14,10 +14,11 @@
 \usepackage{tabularx}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\input{glyphtounicode}
-
-% Ensure machine readable/ATS parsable
-\pdfgentounicode=1
+% Ensure machine readable/ATS parsable across pdfTeX and XeTeX/Tectonic
+\ifdefined\pdfgentounicode
+  \input{glyphtounicode}
+  \pdfgentounicode=1
+\fi
 
 \pagestyle{fancy}
 \fancyhf{}
