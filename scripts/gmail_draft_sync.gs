@@ -26,6 +26,34 @@
 const CV_FOLDER_NAME = "Job_CVs";
 
 /**
+ * ============================================================================
+ * ONE-CLICK COMPLETE AUTHORIZATION FUNCTION
+ * ============================================================================
+ * Run this function ONCE in the Apps Script Editor toolbar:
+ * 1. Select 'authorizeFullDriveAndGmail' in the dropdown.
+ * 2. Click 'Run' (▶️).
+ * 3. Click 'Review permissions' -> Select your Google Account -> 'Advanced' -> 'Go to Job Tracker (unsafe)' -> 'Allow'.
+ * This forces Google to prompt for FULL Google Drive file creation & Gmail scopes!
+ */
+function authorizeFullDriveAndGmail() {
+  Logger.log("1. Checking Google Sheets permission...");
+  SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  Logger.log("2. Checking Google Drive Full File Creation & Sharing permission...");
+  const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
+  const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(CV_FOLDER_NAME);
+  const testFile = folder.createFile("auth_test.txt", "Drive full authorization test", "text/plain");
+  testFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  testFile.setTrashed(true); // clean up immediately
+
+  Logger.log("3. Checking Gmail permission...");
+  GmailApp.getDrafts();
+
+  Logger.log("SUCCESS! Full Google Drive file creation, Gmail, and Sheets are now fully authorized.");
+  return "All permissions authorized successfully!";
+}
+
+/**
  * Populates the `drive_link` column in the Google Sheet for all rows
  * where the CV PDF exists in the Google Drive folder.
  */
