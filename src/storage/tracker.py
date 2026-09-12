@@ -96,8 +96,12 @@ class ApplicationTracker:
                 msg = f"[Google Sheets] Synced '{row.get('company')} - {row.get('title')}' directly to Google Sheet!"
                 if data.get("drive_link"):
                     msg += f" (Drive: {data.get('drive_link')})"
+                elif data.get("drive_error"):
+                    msg += f" [Drive Warning: {data.get('drive_error')} - please authorize DriveApp in Apps Script]"
                 if data.get("apply_status") == "GMAIL_DRAFT_CREATED":
                     msg += f" [Gmail Draft Created]"
+                elif data.get("gmail_error"):
+                    msg += f" [Gmail Warning: {data.get('gmail_error')}]"
                 print(msg)
             else:
                 print(f"[Google Sheets Warning] Webhook returned HTTP {resp.status_code}. Record safely preserved in local CSV.")

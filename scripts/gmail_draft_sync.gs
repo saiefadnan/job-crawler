@@ -25,6 +25,38 @@
 // Name of your Google Drive folder where you store/sync your output PDFs
 const CV_FOLDER_NAME = "Job_CVs";
 
+/**
+ * ============================================================================
+ * ONE-CLICK AUTHORIZATION FUNCTION
+ * ============================================================================
+ * Run this function ONCE in the Apps Script Editor toolbar:
+ * 1. Select 'authorizePermissions' in the function dropdown.
+ * 2. Click 'Run' (▶️).
+ * 3. Click 'Review permissions' -> Select your Google account -> 'Advanced' -> 'Go to Job Tracker (unsafe)' -> 'Allow'.
+ * This grants Google Drive, Sheets, and Gmail permissions so the Webhook can upload CVs!
+ */
+function authorizePermissions() {
+  Logger.log("1. Checking Google Sheets permission...");
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  Logger.log("   Sheet OK: " + sheet.getName());
+
+  Logger.log("2. Checking Google Drive permission...");
+  const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
+  if (!folderIter.hasNext()) {
+    DriveApp.createFolder(CV_FOLDER_NAME);
+    Logger.log("   Created Drive folder: " + CV_FOLDER_NAME);
+  } else {
+    Logger.log("   Found Drive folder: " + CV_FOLDER_NAME);
+  }
+
+  Logger.log("3. Checking Gmail permission...");
+  const drafts = GmailApp.getDrafts();
+  Logger.log("   Gmail OK (Total drafts checked: " + drafts.length + ")");
+
+  Logger.log("ALL PERMISSIONS AUTHORIZED! You can now deploy or re-deploy the Web App as 'New version'.");
+  return "All permissions authorized successfully!";
+}
+
 
 /**
  * Populates the `drive_link` column in the Google Sheet for all rows
@@ -205,6 +237,8 @@ function doPost(e) {
 
     let driveLink = contents.drive_link || "";
     let cvFile = null;
+    let driveError = null;
+    let gmailError = null;
 
     // 1. If base64 PDF is transmitted (e.g. from GitHub Actions runner or local CLI), save to Google Drive
     if (contents.pdf_base64 && contents.cv_filename) {
@@ -221,6 +255,7 @@ function doPost(e) {
         driveLink = cvFile.getUrl();
         contents.drive_link = driveLink;
       } catch (driveErr) {
+        driveError = driveErr.message;
         Logger.log("[Drive Upload Warning] " + driveErr.message);
       }
     }
@@ -250,6 +285,7 @@ function doPost(e) {
         );
         contents.apply_status = "GMAIL_DRAFT_CREATED";
       } catch (gmailErr) {
+        gmailError = gmailErr.message;
         Logger.log("[Gmail Draft Warning] " + gmailErr.message);
       }
     }
@@ -284,6 +320,8 @@ function doPost(e) {
         status: "success", 
         message: "Row appended successfully", 
         drive_link: driveLink,
+        drive_error: driveError,
+        gmail_error: gmailError,
         apply_status: contents.apply_status 
       })
     ).setMimeType(ContentService.MimeType.JSON);
