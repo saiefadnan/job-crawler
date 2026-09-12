@@ -52,7 +52,8 @@ class RemoteOKFetcher(BaseFetcher):
                 url=apply_url,
                 source="remoteok",
                 created_at=str(item.get("date", "")),
-                country=item.get("location", "Remote"),
+                country=item.get("location") or "Remote",
+                remote_option="Remote",
                 tags=item.get("tags", []) if isinstance(item.get("tags"), list) else [],
             )
             jobs.append(job)

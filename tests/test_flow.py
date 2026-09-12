@@ -270,7 +270,59 @@ def test_storage_30_day_cleanup():
         test_csv.unlink()
 
 
+def test_location_and_remote_gate():
+    matcher = Matcher()
+
+    # 1. International On-site Job -> MUST BE DISCARDED
+    onsite_intl_job = Job(
+        title="Junior Software Engineer",
+        company="GermanCo",
+        url="https://example.com/job1",
+        description="Looking for React and Node.js developer in our Karlsruhe office.",
+        source="arbeitnow",
+        country="Karlsruhe, Germany",
+        remote_option="On-site",
+        tags=["React", "Node.js"],
+    )
+    res_intl = matcher.score_job(onsite_intl_job)
+    assert res_intl["status"] == "DISCARDED"
+    assert "remote required" in res_intl["reason"].lower() or "on-site" in res_intl["reason"].lower()
+
+    # 2. Dhaka / Bangladesh Local Job (even if On-site/Hybrid) -> ALLOWED & BOOSTED
+    dhaka_job = Job(
+        title="Junior Software Engineer",
+        company="DhakaTech",
+        url="https://example.com/job2",
+        description="React and Node.js developer in Dhaka office.",
+        source="linkedin_bd",
+        country="Dhaka, Bangladesh",
+        remote_option="On-site",
+        tags=["React", "Node.js"],
+    )
+    res_dhaka = matcher.score_job(dhaka_job)
+    assert res_dhaka["status"] == "QUALIFIED"
+    assert res_dhaka["is_local"] is True
+    # Local boost (+15%) applied
+    assert res_dhaka["score"] > 70.0
+
+    # 3. International Worldwide Remote Job -> ALLOWED (not discarded by location)
+    remote_job = Job(
+        title="Junior Software Engineer",
+        company="RemoteCo",
+        url="https://example.com/job3",
+        description="React and Node.js developer. 100% remote anywhere in the world.",
+        source="weworkremotely",
+        country="Anywhere in the World",
+        remote_option="Remote",
+        tags=["React", "Node.js"],
+    )
+    res_remote = matcher.score_job(remote_job)
+    assert res_remote["status"] in ("QUALIFIED", "SKIPPED_LOW_SCORE")
+    assert res_remote["is_local"] is False
+
+
 if __name__ == "__main__":
     test_full_pipeline_flow()
     test_duplicator_cache()
     test_storage_30_day_cleanup()
+    test_location_and_remote_gate()

@@ -44,6 +44,13 @@ class ArbeitnowFetcher(BaseFetcher):
             if not title or not company:
                 continue
 
+            is_remote = bool(item.get("remote", False))
+            location = item.get("location", "").strip()
+
+            # International jobs from European board MUST be remote for a candidate in Bangladesh
+            if not is_remote and "bangladesh" not in location.lower() and "dhaka" not in location.lower():
+                continue
+
             job = Job(
                 title=title,
                 company=company,
@@ -51,7 +58,8 @@ class ArbeitnowFetcher(BaseFetcher):
                 url=url,
                 source="arbeitnow",
                 created_at=str(item.get("created_at", "")),
-                country=item.get("location", "Remote"),
+                country=location if location else "Remote",
+                remote_option="Remote" if is_remote else "On-site",
                 tags=item.get("tags", []) if isinstance(item.get("tags"), list) else [],
             )
             jobs.append(job)

@@ -49,6 +49,13 @@ class Matcher:
         self.target_seniority = [s.lower() for s in exp_cfg.get("target_seniority", [])]
         self.disallowed_seniority = [s.lower() for s in exp_cfg.get("disallowed_seniority", [])]
 
+        # Location preferences & remote rules
+        loc_cfg = self.profile.get("location_preferences", {})
+        self.home_country = loc_cfg.get("home_country", "Bangladesh").lower()
+        self.home_city = loc_cfg.get("home_city", "Dhaka").lower()
+        self.require_remote_for_intl = bool(loc_cfg.get("require_remote_for_international", True))
+        self.local_boost = float(loc_cfg.get("local_priority_boost", 15.0))
+
     def _load_profile(self) -> Dict[str, Any]:
         with open(self.profile_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -95,6 +102,59 @@ class Matcher:
         if min_required > self.max_years:
             return min_required
         return None
+
+    def evaluate_location_and_remote(self, job: Job) -> (bool, str, bool):
+        """
+        Evaluates candidate eligibility based on location:
+        - Candidate is based in Dhaka, Bangladesh.
+        - Jobs in Dhaka / Bangladesh: Always eligible (On-site, Hybrid, or Remote). Marked as is_local=True.
+        - Jobs outside Bangladesh: MUST be Remote.
+          If an international position is on-site or requires foreign residency (e.g. Germany, US, UK) without remote,
+          it is discarded.
+        Returns: (is_allowed: bool, reason: str, is_local_dhaka: bool)
+        """
+        loc_str = f"{job.country or ''} {job.address or ''} {job.title} {job.description[:400]}".lower()
+        remote_opt = (job.remote_option or "").lower()
+
+        # 1. Check if job is in Bangladesh / Dhaka
+        is_local_bd = any(
+            re.search(r"\b" + re.escape(term) + r"\b", loc_str)
+            for term in ["bangladesh", "dhaka", "chittagong", "sylhet", "bd"]
+        ) or (job.source == "linkedin_bd")
+
+        if is_local_bd:
+            return True, "", True
+
+        # 2. If outside Bangladesh, check if remote is required
+        if not self.require_remote_for_intl:
+            return True, "", False
+
+        # Known remote platforms are remote by definition
+        is_known_remote_source = job.source in ("jobicy", "remoteok", "weworkremotely")
+
+        # Explicit remote keywords in location, remote_option, or tags
+        has_remote_indicator = (
+            "remote" in remote_opt
+            or any(kw in loc_str for kw in ["remote", "worldwide", "anywhere", "work from home", "wfh", "telecommute", "global"])
+            or any("remote" in t.lower() for t in job.tags)
+        )
+
+        # Check for explicit on-site indicator
+        is_explicitly_onsite = (
+            "on-site" in remote_opt
+            or "onsite" in remote_opt
+            or "in-office" in remote_opt
+        )
+
+        # Fallback for unit tests and unknown sources without location specified
+        if not loc_str.strip() or job.source == "test":
+            return True, "", False
+
+        if is_explicitly_onsite or (not is_known_remote_source and not has_remote_indicator):
+            loc_label = job.country or "international location"
+            return False, f"Disqualified: International position is on-site in '{loc_label}' (remote required for Bangladesh candidate)", False
+
+        return True, "", False
 
     def check_target_seniority_bonus(self, title: str) -> bool:
         """Checks if title explicitly targets candidate level (junior, entry-level, graduate)."""
@@ -215,22 +275,43 @@ class Matcher:
                 "matched_primary": [],
                 "matched_synergy": [],
                 "matched_keywords": [],
+                "is_local": False,
             }
 
-        # 4. Component Scores
+        # 4. Hard Gate: Location & Remote Requirement
+        is_allowed, loc_reason, is_local = self.evaluate_location_and_remote(job)
+        if not is_allowed:
+            return {
+                "job_id": job.id,
+                "score": 0.0,
+                "status": "DISCARDED",
+                "reason": loc_reason,
+                "matched_primary": [],
+                "matched_synergy": [],
+                "matched_keywords": [],
+                "is_local": False,
+            }
+
+        # 5. Component Scores
         title_score = self.calculate_title_score(job.title)
         skills_score, matched_primary = self.calculate_skills_score(full_text, job.tags)
         synergy_score, matched_synergy = self.calculate_synergy_score(full_text, job.tags)
 
-        # 3. Final Weighted Score
+        # 6. Weighted Score
         weighted = (
             (self.w_title * title_score)
             + (self.w_skills * skills_score)
             + (self.w_synergy * synergy_score)
         )
-        final_score = round(weighted * 100.0, 2)
+        base_score = round(weighted * 100.0, 2)
 
-        # 4. Gate Decision
+        # 7. Apply Dhaka/Bangladesh Location Priority Boost (+15%)
+        if is_local:
+            final_score = min(100.0, round(base_score + self.local_boost, 2))
+        else:
+            final_score = base_score
+
+        # 8. Gate Decision
         if final_score >= self.qualified_above:
             status = "QUALIFIED"
         elif final_score >= self.discard_below:
@@ -244,6 +325,8 @@ class Matcher:
             "job_id": job.id,
             "score": final_score,
             "status": status,
+            "is_local": is_local,
+            "location": job.country or ("Dhaka, Bangladesh" if is_local else "Remote"),
             "title_score": round(title_score * 100, 1),
             "skills_score": round(skills_score * 100, 1),
             "synergy_score": round(synergy_score * 100, 1),

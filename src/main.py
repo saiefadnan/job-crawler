@@ -6,6 +6,8 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+from src.sourcing.fetchers.linkedin_bd import LinkedInBDFetcher
+from src.sourcing.fetchers.weworkremotely import WeWorkRemotelyFetcher
 from src.sourcing.fetchers.jobicy import JobicyFetcher
 from src.sourcing.fetchers.remoteok import RemoteOKFetcher
 from src.sourcing.fetchers.arbeitnow import ArbeitnowFetcher
@@ -20,9 +22,11 @@ from src.routing.router import ApplicationRouter
 
 def run_pipeline(limit: int = 1000):
     fetchers = [
-        JobicyFetcher(),
-        RemoteOKFetcher(),
-        ArbeitnowFetcher(),
+        LinkedInBDFetcher(),      # Priority 1: Direct Dhaka, Bangladesh local tech jobs
+        WeWorkRemotelyFetcher(),  # Priority 2: Worldwide Remote programming jobs
+        JobicyFetcher(),          # Priority 3: Remote jobs
+        RemoteOKFetcher(),        # Priority 4: Remote jobs
+        ArbeitnowFetcher(),       # Priority 5: Remote jobs (filtered)
     ]
     results = []
     for fetcher in fetchers:
@@ -43,7 +47,8 @@ def run_pipeline(limit: int = 1000):
     
     for job in new_jobs:
         res = matcher.score_job(job)
-        print(f"\n--- {job.title} @ {job.company} ---")
+        loc_badge = f" [📍 {res.get('location')}]" if res.get('is_local') else f" [🌐 Remote]"
+        print(f"\n--- {job.title} @ {job.company}{loc_badge} ---")
         print(f"Status: {res['status']} | Score: {res['score']}%")
 
         if res.get("reason"):
@@ -53,12 +58,13 @@ def run_pipeline(limit: int = 1000):
             res["title"] = job.title
             res["company"] = job.company
             res["url"] = job.url
+            res["country"] = job.country
             ranked_jobs.append(res)
             print(f"Title Score: {res['title_score']}% | Skills: {res['skills_score']}% | Synergy: {res['synergy_score']}%")
             print(f"Matched Keywords: {res['matched_keywords']}")
 
-    # Sort jobs by match score
-    ranked_jobs.sort(key=lambda x: x["score"], reverse=True)
+    # Sort jobs: Dhaka/Bangladesh local jobs prioritized first, then highest match score
+    ranked_jobs.sort(key=lambda x: (x.get("is_local", False), x["score"]), reverse=True)
     selector = Selector()
     renderer = CVRenderer()
     compiler = TectonicCompiler()

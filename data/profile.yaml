@@ -119,3 +119,11 @@ experience_filter:
     - "mid-senior"
     - "iii"
     - "iv"
+
+location_preferences:
+  home_country: "Bangladesh"
+  home_city: "Dhaka"
+  allow_local_onsite: true
+  allow_local_hybrid: true
+  require_remote_for_international: true
+  local_priority_boost: 15.0 # +15% priority boost to Dhaka/Bangladesh jobs

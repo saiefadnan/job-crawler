@@ -27,7 +27,8 @@ class JobicyFetcher(BaseFetcher):
                 url=data.get("url", ""),
                 source="jobicy",
                 created_at=data.get("pubDate"),
-                country=data.get("jobGeo"),
+                country=data.get("jobGeo", "Worldwide"),
+                remote_option="Remote",
                 tags=data.get("jobIndustry", []) if isinstance(data.get("jobIndustry"), list) else [],
             )
             jobs.append(job)
