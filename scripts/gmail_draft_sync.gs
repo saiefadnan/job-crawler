@@ -26,39 +26,6 @@
 const CV_FOLDER_NAME = "Job_CVs";
 
 /**
- * ============================================================================
- * ONE-CLICK AUTHORIZATION FUNCTION
- * ============================================================================
- * Run this function ONCE in the Apps Script Editor toolbar:
- * 1. Select 'authorizePermissions' in the function dropdown.
- * 2. Click 'Run' (▶️).
- * 3. Click 'Review permissions' -> Select your Google account -> 'Advanced' -> 'Go to Job Tracker (unsafe)' -> 'Allow'.
- * This grants Google Drive, Sheets, and Gmail permissions so the Webhook can upload CVs!
- */
-function authorizePermissions() {
-  Logger.log("1. Checking Google Sheets permission...");
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  Logger.log("   Sheet OK: " + sheet.getName());
-
-  Logger.log("2. Checking Google Drive permission...");
-  const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
-  if (!folderIter.hasNext()) {
-    DriveApp.createFolder(CV_FOLDER_NAME);
-    Logger.log("   Created Drive folder: " + CV_FOLDER_NAME);
-  } else {
-    Logger.log("   Found Drive folder: " + CV_FOLDER_NAME);
-  }
-
-  Logger.log("3. Checking Gmail permission...");
-  const drafts = GmailApp.getDrafts();
-  Logger.log("   Gmail OK (Total drafts checked: " + drafts.length + ")");
-
-  Logger.log("ALL PERMISSIONS AUTHORIZED! You can now deploy or re-deploy the Web App as 'New version'.");
-  return "All permissions authorized successfully!";
-}
-
-
-/**
  * Populates the `drive_link` column in the Google Sheet for all rows
  * where the CV PDF exists in the Google Drive folder.
  */
@@ -80,7 +47,6 @@ function createGmailDraftsFromSheet() {
   generateDriveLinksAndSync();
 }
 
-
 /**
  * Main processor for Drive link generation and Gmail drafting.
  */
@@ -93,8 +59,8 @@ function processSheet(options) {
     return;
   }
 
-  const headers = data[0].map(h => String(h).trim().toLowerCase());
-  
+  const headers = data[0].map((h) => String(h).trim().toLowerCase());
+
   // Locate columns dynamically
   const cvPathCol = headers.indexOf("cv_path");
   let driveCol = headers.indexOf("drive_link");
@@ -117,7 +83,9 @@ function processSheet(options) {
   if (folderIter.hasNext()) {
     cvFolder = folderIter.next();
   } else {
-    Logger.log(`Folder '${CV_FOLDER_NAME}' not found in Google Drive. You can create it to auto-generate links.`);
+    Logger.log(
+      `Folder '${CV_FOLDER_NAME}' not found in Google Drive. You can create it to auto-generate links.`,
+    );
   }
 
   let linksGenerated = 0;
@@ -127,7 +95,9 @@ function processSheet(options) {
     const row = data[i];
     const rawCvPath = String(row[cvPathCol] || "");
     let existingDriveLink = String(row[driveCol] || "").trim();
-    const applyMethod = String(row[methodCol] || "").toLowerCase().trim();
+    const applyMethod = String(row[methodCol] || "")
+      .toLowerCase()
+      .trim();
     const currentStatus = String(row[statusCol] || "").trim();
     const recipient = String(row[emailCol] || "").trim();
     const subject = String(row[subjectCol] || "").trim();
@@ -146,23 +116,33 @@ function processSheet(options) {
         cvFile = files.next();
         if (!existingDriveLink) {
           // Set to anyone with link can view
-          cvFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          cvFile.setSharing(
+            DriveApp.Access.ANYONE_WITH_LINK,
+            DriveApp.Permission.VIEW,
+          );
           existingDriveLink = cvFile.getUrl();
           sheet.getRange(i + 1, driveCol + 1).setValue(existingDriveLink);
           linksGenerated++;
-          Logger.log(`[Drive Link Generated] ${company} -> ${existingDriveLink}`);
+          Logger.log(
+            `[Drive Link Generated] ${company} -> ${existingDriveLink}`,
+          );
         }
       }
     }
 
     // 2. Create Gmail draft if enabled and row is ready
-    if (options.createDrafts && applyMethod === "email" && currentStatus === "EMAIL_DRAFTED" && recipient) {
+    if (
+      options.createDrafts &&
+      applyMethod === "email" &&
+      currentStatus === "EMAIL_DRAFTED" &&
+      recipient
+    ) {
       try {
         // Embed the Drive link into the email body if available
         if (existingDriveLink && !body.includes(existingDriveLink)) {
           body = body.replace(
             "I have attached my tailored CV for your review.",
-            `You can view/download my tailored CV directly here:\n${existingDriveLink}\n\n(I have also attached the PDF for your convenience).`
+            `You can view/download my tailored CV directly here:\n${existingDriveLink}\n\n(I have also attached the PDF for your convenience).`,
           );
         }
 
@@ -172,7 +152,7 @@ function processSheet(options) {
         }
 
         GmailApp.createDraft(recipient, subject, body, draftOptions);
-        
+
         sheet.getRange(i + 1, statusCol + 1).setValue("GMAIL_DRAFT_CREATED");
         draftsCreated++;
         Logger.log(`[Draft Created] ${company} -> ${recipient}`);
@@ -191,7 +171,6 @@ function processSheet(options) {
     // Silent on time-driven triggers
   }
 }
-
 
 /**
  * ============================================================================
@@ -215,7 +194,7 @@ function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
       return ContentService.createTextOutput(
-        JSON.stringify({ status: "error", message: "No post data received" })
+        JSON.stringify({ status: "error", message: "No post data received" }),
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -230,8 +209,30 @@ function doPost(e) {
         JSON.stringify({
           status: "success",
           message: "30-Day cloud cleanup completed",
-          purged: result
-        })
+          purged: result,
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Diagnostic Ping Action
+    if (contents.action === "ping") {
+      let driveStatus = "unknown";
+      let folderId = null;
+      try {
+        const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
+        const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(CV_FOLDER_NAME);
+        driveStatus = "authorized";
+        folderId = folder.getId();
+      } catch (err) {
+        driveStatus = "error: " + err.message;
+      }
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          deployed_version: "2.1",
+          drive_access: driveStatus,
+          folder_id: folderId,
+        }),
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -244,14 +245,19 @@ function doPost(e) {
     if (contents.pdf_base64 && contents.cv_filename) {
       try {
         const folderIter = DriveApp.getFoldersByName(CV_FOLDER_NAME);
-        const folder = folderIter.hasNext() ? folderIter.next() : DriveApp.createFolder(CV_FOLDER_NAME);
+        const folder = folderIter.hasNext()
+          ? folderIter.next()
+          : DriveApp.createFolder(CV_FOLDER_NAME);
         const blob = Utilities.newBlob(
           Utilities.base64Decode(contents.pdf_base64),
           "application/pdf",
-          contents.cv_filename
+          contents.cv_filename,
         );
         cvFile = folder.createFile(blob);
-        cvFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        cvFile.setSharing(
+          DriveApp.Access.ANYONE_WITH_LINK,
+          DriveApp.Permission.VIEW,
+        );
         driveLink = cvFile.getUrl();
         contents.drive_link = driveLink;
       } catch (driveErr) {
@@ -267,7 +273,9 @@ function doPost(e) {
         if (driveLink && !emailBody.includes(driveLink)) {
           emailBody = emailBody.replace(
             "I have attached my tailored CV for your review.",
-            "You can view/download my tailored CV directly here:\n" + driveLink + "\n\n(I have also attached the PDF for your convenience)."
+            "You can view/download my tailored CV directly here:\n" +
+              driveLink +
+              "\n\n(I have also attached the PDF for your convenience).",
           );
           contents.email_body = emailBody;
         }
@@ -281,7 +289,7 @@ function doPost(e) {
           contents.email_to,
           contents.email_subject || "Job Application",
           emailBody,
-          draftOptions
+          draftOptions,
         );
         contents.apply_status = "GMAIL_DRAFT_CREATED";
       } catch (gmailErr) {
@@ -291,10 +299,22 @@ function doPost(e) {
     }
 
     const defaultHeaders = [
-      "date", "job_id", "company", "title", "score", "status",
-      "url", "matched_keywords", "cv_path", "drive_link",
-      "apply_method", "email_to", "email_subject", "email_body",
-      "draft_path", "apply_status"
+      "date",
+      "job_id",
+      "company",
+      "title",
+      "score",
+      "status",
+      "url",
+      "matched_keywords",
+      "cv_path",
+      "drive_link",
+      "apply_method",
+      "email_to",
+      "email_subject",
+      "email_body",
+      "draft_path",
+      "apply_status",
     ];
 
     // If sheet has no rows, add standard headers first
@@ -303,10 +323,12 @@ function doPost(e) {
     }
 
     // Read current header row to map fields dynamically
-    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const currentHeaders = headerRow.map(h => String(h).trim().toLowerCase());
+    const headerRow = sheet
+      .getRange(1, 1, 1, sheet.getLastColumn())
+      .getValues()[0];
+    const currentHeaders = headerRow.map((h) => String(h).trim().toLowerCase());
 
-    const newRow = currentHeaders.map(header => {
+    const newRow = currentHeaders.map((header) => {
       const val = contents[header];
       if (val === undefined || val === null) return "";
       if (Array.isArray(val)) return val.join(", ");
@@ -316,23 +338,21 @@ function doPost(e) {
     sheet.appendRow(newRow);
 
     return ContentService.createTextOutput(
-      JSON.stringify({ 
-        status: "success", 
-        message: "Row appended successfully", 
+      JSON.stringify({
+        status: "success",
+        message: "Row appended successfully",
         drive_link: driveLink,
         drive_error: driveError,
         gmail_error: gmailError,
-        apply_status: contents.apply_status 
-      })
+        apply_status: contents.apply_status,
+      }),
     ).setMimeType(ContentService.MimeType.JSON);
-
   } catch (err) {
     return ContentService.createTextOutput(
-      JSON.stringify({ status: "error", message: err.message })
+      JSON.stringify({ status: "error", message: err.message }),
     ).setMimeType(ContentService.MimeType.JSON);
   }
 }
-
 
 /**
  * ============================================================================
@@ -359,7 +379,9 @@ function pruneExpiredDriveFiles(ttlDays = 30) {
       }
     }
   }
-  Logger.log(`[Drive Prune] Purged ${purgedCount} files older than ${ttlDays} days from '${CV_FOLDER_NAME}'.`);
+  Logger.log(
+    `[Drive Prune] Purged ${purgedCount} files older than ${ttlDays} days from '${CV_FOLDER_NAME}'.`,
+  );
   return purgedCount;
 }
 
@@ -371,7 +393,7 @@ function pruneExpiredSheetRows(ttlDays = 30) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return 0;
 
-  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const headers = data[0].map((h) => String(h).trim().toLowerCase());
   const dateCol = headers.indexOf("date");
   if (dateCol === -1) return 0;
 
@@ -388,7 +410,9 @@ function pruneExpiredSheetRows(ttlDays = 30) {
       purgedRows++;
     }
   }
-  Logger.log(`[Sheet Prune] Purged ${purgedRows} rows older than ${ttlDays} days.`);
+  Logger.log(
+    `[Sheet Prune] Purged ${purgedRows} rows older than ${ttlDays} days.`,
+  );
   return purgedRows;
 }
 
@@ -405,14 +429,19 @@ function pruneExpiredGmailDrafts(ttlDays = 30) {
     const msg = draft.getMessage();
     const subject = (msg.getSubject() || "").toLowerCase();
     // Target job application drafts
-    if (subject.includes("application:") || subject.includes("job application")) {
+    if (
+      subject.includes("application:") ||
+      subject.includes("job application")
+    ) {
       if (msg.getDate() < cutoffDate) {
         draft.deleteDraft();
         purgedDrafts++;
       }
     }
   }
-  Logger.log(`[Gmail Draft Prune] Purged ${purgedDrafts} drafts older than ${ttlDays} days.`);
+  Logger.log(
+    `[Gmail Draft Prune] Purged ${purgedDrafts} drafts older than ${ttlDays} days.`,
+  );
   return purgedDrafts;
 }
 
@@ -427,8 +456,10 @@ function run30DayCleanup(ttlDays = 30) {
   const summary = {
     drive: drivePurged,
     sheet: sheetPurged,
-    gmail: draftsPurged
+    gmail: draftsPurged,
   };
-  Logger.log(`[30-Day Cloud Cleanup] Drive: -${drivePurged}, Sheet: -${sheetPurged}, Gmail: -${draftsPurged}`);
+  Logger.log(
+    `[30-Day Cloud Cleanup] Drive: -${drivePurged}, Sheet: -${sheetPurged}, Gmail: -${draftsPurged}`,
+  );
   return summary;
 }
