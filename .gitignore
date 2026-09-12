@@ -35,6 +35,7 @@ htmlcov/
 # Local cache / outputs
 output/
 *.pdf
+*.zip
 
 # IDE
 .idea/

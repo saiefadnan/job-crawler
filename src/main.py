@@ -109,4 +109,10 @@ def run_pipeline(limit: int = 1000):
 
 
 if __name__ == '__main__':
-    run_pipeline(limit=1000)
+    if "--clear-cache" in sys.argv:
+        from scripts.clear_cache import reset_all
+        cache_only = "--cache-only" in sys.argv
+        reset_all(cache_only=cache_only)
+    else:
+        run_pipeline(limit=1000)
+

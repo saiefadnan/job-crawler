@@ -362,9 +362,39 @@ def test_delete_local_cv_artifacts():
         digest_path.unlink()
 
 
+def test_clear_cache_utility():
+    import json
+    import csv
+    from scripts.clear_cache import clear_cache, clear_applications_log
+    test_cache = "output/test_clear_cache.json"
+    test_csv = "output/test_clear_app.csv"
+    
+    # 1. Clear cache
+    assert clear_cache(test_cache) is True
+    with open(test_cache, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        assert data["entries"] == {}
+        assert data["total_active"] == 0
+
+    # 2. Clear CSV log
+    assert clear_applications_log(test_csv) is True
+    with open(test_csv, "r", encoding="utf-8") as f:
+        rows = list(csv.reader(f))
+        assert len(rows) == 1
+        assert rows[0][0] == "date"
+        assert rows[0][1] == "job_id"
+
+    # Cleanup
+    for path in (test_cache, test_csv):
+        p = Path(path)
+        if p.exists():
+            p.unlink()
+
+
 if __name__ == "__main__":
     test_full_pipeline_flow()
     test_duplicator_cache()
     test_storage_30_day_cleanup()
     test_location_and_remote_gate()
     test_delete_local_cv_artifacts()
+    test_clear_cache_utility()

@@ -67,6 +67,7 @@ job-search/
 ├── templates/
 │   └── moderncv_classic_blue.tex.j2 # Strict 1-page ModernCV template
 ├── scripts/
+│   ├── clear_cache.py               # Cache & application log reset utility for fresh runs
 │   └── gmail_draft_sync.gs          # Google Apps Script for Sheet webhook, Drive links & Gmail drafts
 ├── tests/
 │   └── test_flow.py                 # Full integration test suite & cache tests
@@ -126,7 +127,30 @@ pip install -r requirements.txt
 
 ---
 
-### 3. Customize Your Profile (`data/profile.yaml`)
+### 3. Start Fresh: Reset Cache & Application History (Recommended for New Users)
+
+When you clone this repository, `data/processed_cache.json` and `data/applications.csv` may contain previously evaluated job hashes and application logs from the original developer's runs. 
+
+Because the deduplication engine ignores previously processed jobs, you should clear the cache so the pipeline crawls and evaluates **all** active job postings from scratch:
+
+```bash
+# Full reset: resets processed_cache.json, resets applications.csv, and cleans output/
+python scripts/clear_cache.py
+
+# Or via the main module:
+python -m src.main --clear-cache
+```
+
+> **Tip**: If you only want to clear the deduplication cache while keeping your historical `applications.csv` log intact, pass `--cache-only`:
+> ```bash
+> python scripts/clear_cache.py --cache-only
+> # Or:
+> python -m src.main --clear-cache --cache-only
+> ```
+
+---
+
+### 4. Customize Your Profile (`data/profile.yaml`)
 
 **This file is the single configuration hub.** You do not need to modify any Python code to adapt this system to yourself.
 
@@ -189,7 +213,7 @@ weights:
 
 ---
 
-### 4. Provide Your Authentic Experiences (`data/bullet_bank.yaml`)
+### 5. Provide Your Authentic Experiences (`data/bullet_bank.yaml`)
 
 Edit `data/bullet_bank.yaml` with your genuine education, work history, and portfolio projects.
 
@@ -203,7 +227,7 @@ Each project should include:
 
 ---
 
-### 5. Defining & Customizing Your CV Template
+### 6. Defining & Customizing Your CV Template
 
 The pipeline renders your tailored CV using a Jinja2-powered LaTeX template located in the `templates/` directory.
 
@@ -258,7 +282,7 @@ To guarantee the output never overflows onto a second page:
 
 ---
 
-### 6. Setup Google Sheets, Google Drive & Gmail Cloud Sync
+### 7. Setup Google Sheets, Google Drive & Gmail Cloud Sync
 
 The pipeline features a zero-cost cloud sync mechanism connecting Python with your personal Google Drive, Google Sheets, and Gmail using a lightweight Google Apps Script endpoint.
 
@@ -295,13 +319,24 @@ The pipeline is strictly **Local-First and Fault-Tolerant**:
 
 ---
 
-### 7. Run the Pipeline Locally
+### 8. Run the Pipeline Locally
 
 Run the pipeline from your terminal:
 
 ```bash
 python -m src.main
 ```
+
+#### Handy CLI Commands:
+
+| Command | Description |
+| :--- | :--- |
+| `python -m src.main` | Runs full crawl, scoring, CV compilation, and cloud sync. |
+| `python scripts/clear_cache.py` | Resets `data/processed_cache.json`, clears `data/applications.csv`, and empties `output/`. |
+| `python -m src.main --clear-cache` | Convenient flag to trigger full cache reset directly from the main module. |
+| `python scripts/clear_cache.py --cache-only` | Clears deduplication cache only without modifying your application history log. |
+| `python -m src.main --clear-cache --cache-only` | Runs cache-only reset directly from `src.main`. |
+| `pytest tests/ -v` | Runs the full integration test suite. |
 
 When execution completes, check the generated artifacts:
 - **`output/tailored_cvs/`**: Tailored 1-page ModernCV PDF for each qualified match.
@@ -313,7 +348,7 @@ When execution completes, check the generated artifacts:
 
 ---
 
-### 8. Automated Daily Runs via GitHub Actions (Cloud Execution)
+### 9. Automated Daily Runs via GitHub Actions (Cloud Execution)
 
 You do **not** need to keep your computer running. The repository includes a GitHub Actions workflow (`.github/workflows/job_pipeline.yml`) configured to run daily at 9:00 AM BST (03:00 UTC) (or manually triggered via 1-click `workflow_dispatch`).
 
@@ -334,7 +369,7 @@ You do **not** need to keep your computer running. The repository includes a Git
 
 ---
 
-### 9. Handling Applications: Your Daily Workflow
+### 10. Handling Applications: Your Daily Workflow
 
 Once the pipeline runs (either locally or on schedule in GitHub Actions):
 
