@@ -10,54 +10,65 @@ This document formalizes the refined zero-cost job pipeline architecture based o
 
 ```mermaid
 flowchart TD
-    subgraph Sourcing ["1. Sourcing Layer"]
-        Cron["GitHub Actions Cron (Daily / Dispatch)"] --> Fetchers["Job Fetchers\n(RemoteOK, Arbeitnow, Jobicy, Hacker News)"]
-        Fetchers --> Dedupe{"Deduplication Engine\n(SHA-256 Hash Check)"}
-        Dedupe -- "Already in cache" --> SkipSeen["Drop (Already Seen)"]
+    subgraph Sourcing ["1. Sourcing Layer (Multi-Source Ingestion)"]
+        Cron["GitHub Actions Cron\n(Daily @ 7:00 AM BST / 01:00 UTC)"] --> Fetchers
+        Fetchers["Job Fetchers:\n- LinkedIn BD (Dhaka, Bangladesh)\n- We Work Remotely (Worldwide Remote)\n- Jobicy (Remote Tech)\n- RemoteOK (Remote Developers)\n- Arbeitnow (Remote Filtered)"]
+        Fetchers --> Dedupe{"Deduplication Engine\n(SHA-256 Hash + 30-Day TTL)"}
+        Dedupe -- "Already in cache" --> SkipSeen["Drop (Already Processed)"]
         Dedupe -- "New Job" --> NewJobs["Raw Normalized Job Feed"]
     end
 
-    subgraph Ranking ["2. Matching & Ranking"]
-        NewJobs --> Ranker["Match & Scoring Engine\n(Formula: 0.35 Title + 0.50 Skills + 0.15 Synergy)"]
-        Profile["data/profile.yaml\n(Taxonomy, Roles, Negatives)"] --> Ranker
-        Ranker --> Threshold{"Match Score Gate"}
-        Threshold -- "Score < 65% (Low Match)" --> LogLow["Log to Sheet: SKIPPED_LOW_SCORE"]
-        Threshold -- "Score < 40% (Irrelevant / Excluded)" --> Discard["Discard & Drop"]
-        Threshold -- "Score >= 65% (Qualified)" --> QualifiedQueue["Qualified Job Queue"]
+    subgraph Ranking ["2. Matching, Strict Gating & Prioritization"]
+        NewJobs --> NegativeGate{"Gate 1: Negative Keywords\n(Security clearance, US citizen only, unpaid)"}
+        NegativeGate -- "Hit" --> DiscardNeg["Discard (Negative Keyword)"]
+        NegativeGate -- "Pass" --> SeniorityGate{"Gate 2: Seniority Level\n(Senior, Lead, Principal, Manager, Director)"}
+        
+        SeniorityGate -- "Hit Senior" --> DiscardSen["Discard (Senior Role)"]
+        SeniorityGate -- "Pass" --> ExpGate{"Gate 3: Experience Level\n(Demands > 1 Year Experience)"}
+        
+        ExpGate -- "Demands > 1 Yr" --> DiscardExp["Discard (>1 Year Required)"]
+        ExpGate -- "Pass (0-1 Yr)" --> LocGate{"Gate 4: Location & Remote Gate\n(Intl Must Be Remote | Dhaka BD Allowed)"}
+        
+        LocGate -- "Intl On-Site" --> DiscardLoc["Discard (Intl On-Site)"]
+        LocGate -- "Eligible" --> Scorer["Match Engine\n(0.35 Title + 0.50 Skills + 0.15 Synergy)\n+ Dhaka BD Local Boost (+15%)"]
+        
+        Scorer --> ScoreThreshold{"Score >= 65%?"}
+        ScoreThreshold -- "Score < 40%" --> DiscardScore["Discard (Low Match)"]
+        ScoreThreshold -- "40% <= Score < 65%" --> LogSkipped["Log to Sheet: SKIPPED_LOW_SCORE"]
+        ScoreThreshold -- "Score >= 65%" --> PrioritySort["Priority Queue\n(1. Dhaka/BD Local First, 2. Highest Match Score)"]
     end
 
     subgraph Customization ["3. Verified CV Customization"]
-        QualifiedQueue --> Selector["Bullet Selector & Optimizer\n(Knapsack-style by matched tags)"]
-        BulletBank["data/bullet_bank.yaml\n(Immutable Verified Bullets)"] --> Selector
-        Selector --> AuditTrail["audit_log.json\n(Which bullets picked & why)"]
-        Selector --> JinjaRenderer["LaTeX Jinja2 Renderer\n(ModernCV Classic Blue)"]
+        PrioritySort --> Selector["Bullet Selector & Optimizer\n(Knapsack Match from Bullet Bank)"]
+        BulletBank["data/bullet_bank.yaml\n(Immutable Verified Projects & Skills)"] --> Selector
+        Selector --> JinjaRenderer["LaTeX Jinja2 Renderer\n(ModernCV Classic Blue - 1 Page Strict)"]
         JinjaRenderer --> SanitizedTex["Company_Role_CV.tex"]
     end
 
     subgraph Compilation ["4. Zero-Cost Compilation"]
-        SanitizedTex --> Tectonic["Tectonic LaTeX Engine\n(Inside GitHub Actions Runner)"]
+        SanitizedTex --> Tectonic["Tectonic LaTeX Engine\n(Compiled in GitHub Actions / Local Runner)"]
         Tectonic --> OutputPDF["Company_Role_CV.pdf"]
     end
 
-    subgraph Storage ["5. Storage & Logging"]
-        OutputPDF --> AppsScriptWebhook["Google Apps Script Webhook"]
-        AppsScriptWebhook --> GDrive["Google Drive\n(/Job_Applications/YYYY-MM/)"]
-        AppsScriptWebhook --> GSheet["Google Sheet Tracker\n(Appends New Row with Drive Link)"]
+    subgraph Storage ["5. Cloud Storage & Sync"]
+        OutputPDF --> B64Encoder["Base64 PDF Encoder"]
+        B64Encoder --> AppsScriptWebhook["Google Apps Script Webhook"]
+        AppsScriptWebhook --> GDrive["Google Drive\n(Folder: Job_CVs / Shareable Link)"]
+        AppsScriptWebhook --> GSheet["Google Sheet Tracker\n(Appends Row with drive_link)"]
+        AppsScriptWebhook --> GmailDraft["Gmail Drafts\n(Email applications pre-attached with PDF)"]
     end
 
     subgraph Routing ["6. Human Review & Decision Point"]
-        GSheet --> ReviewInbox{"Review Queue in Sheet / Daily Digest"}
-        ReviewInbox -- "apply_method == 'email'" --> EmailQueue["Email Queue\n(Draft / 24h Review Window)"]
-        ReviewInbox -- "apply_method == 'ats'" --> ATSQueue["Manual Review Queue\n(Click direct job link + upload tailored PDF)"]
+        GSheet --> ReviewInbox{"Review Queue in Sheet / pending_review.md"}
+        ReviewInbox -- "apply_method == 'email'" --> EmailQueue["Gmail Draft Ready\n(1-Click Review & Send)"]
+        ReviewInbox -- "apply_method == 'ats'" --> ATSQueue["Manual ATS Queue\n(Click Apply Link + Upload Drive PDF)"]
     end
 
-    subgraph FeedbackLoop ["7. Tracker & Feedback Loop"]
-        EmailQueue --> MarkApplied["Mark Status: APPLIED"]
-        ATSQueue --> MarkApplied
-        MarkApplied --> GSheet
-        GSheet --> FollowUp{"7 Days Since Applied?"}
-        FollowUp -- "Yes" --> DailyDigest["Daily Digest Follow-Up Reminder"]
-        FollowUp -- "No" --> Wait["Awaiting Outcome"]
+    subgraph Maintenance ["7. Unified 30-Day Rolling Maintenance"]
+        DailyCron["Daily Maintenance Trigger"] --> CleanupEngine["Unified 30-Day Pruner"]
+        CleanupEngine --> PruneCache["Prune processed_cache.json (TTL > 30d)"]
+        CleanupEngine --> PruneLocal["Prune output/ PDFs & TeX files (TTL > 30d)"]
+        CleanupEngine --> PruneCloud["Prune Google Drive files, Sheet rows & old drafts (TTL > 30d)"]
     end
 ```
 

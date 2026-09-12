@@ -16,15 +16,22 @@ An end-to-end, zero-cost, autonomous job search and application pipeline. It ing
 
 ### The 7-Stage Pipeline
 
-1. **Multi-Source Ingestion**: Ingests fresh postings from free, unauthenticated developer APIs (Jobicy, RemoteOK, Arbeitnow) without brittle web scraping.
+1. **Multi-Source Ingestion**: Ingests fresh postings from public APIs and RSS feeds without paid scrapers:
+   - **LinkedIn BD**: Real-time junior/entry-level tech roles in **Dhaka, Bangladesh** via public guest endpoints.
+   - **WeWorkRemotely**: Dedicated worldwide remote programming roles via official RSS.
+   - **Jobicy, RemoteOK, Arbeitnow**: Worldwide remote developer listings.
 2. **Deduplication Engine**: Hashes postings with SHA-256 and maintains a self-cleaning **30-day rolling TTL cache** (`data/processed_cache.json`) to prevent bloat while allowing natural re-evaluations of re-posted jobs.
-3. **Match & Rank Engine**: Evaluates job descriptions with multi-tier scoring (Title, Skills, Synergy, Junior Bonus) and enforces strict **Seniority & Experience Gating** (hard-rejects senior/lead/staff roles and positions demanding $> 1$ year of experience).
+3. **Match & Rank Engine**: Evaluates job descriptions with multi-tier scoring (Title, Skills, Synergy, Junior Bonus) and enforces **4 Strict Hard Gates**:
+   - *Gate 1: Negative Keywords* (security clearance, US citizen only, unpaid).
+   - *Gate 2: Seniority Level* (hard-rejects Senior, Lead, Staff, Principal, Manager, III/IV).
+   - *Gate 3: Experience Gate* (hard-rejects positions demanding $> 1$ year of experience).
+   - *Gate 4: Location & Remote Gate* (all international positions must be strictly remote; local **Dhaka, Bangladesh** roles can be on-site, hybrid, or remote and receive a **+15% priority score bonus** placed at the front of the queue).
 4. **Tailored CV Builder**: Uses an immutable bullet bank (`data/bullet_bank.yaml`) to match and select the candidate's genuine projects and skills. **Zero LLM hallucinations or fabricated credentials.**
 5. **LaTeX PDF Compiler**: Renders a clean ModernCV template and compiles it into a pixel-perfect, strict 1-page PDF using the high-performance **Tectonic** engine.
-6. **Real-Time Cloud Sync**: Records all evaluations into `data/applications.csv` and dispatches live webhooks to a Google Apps Script endpoint linked to a Google Sheet.
+6. **Real-Time Cloud Sync**: Records all evaluations into `data/applications.csv` and dispatches live webhooks to Google Apps Script to upload the PDF to **Google Drive**, return a shareable Drive link, and log the row into **Google Sheets**.
 7. **Dual Routing**:
-   - **Email Applications**: Generates customized pitch drafts saved locally and synced into Gmail ready for 1-click review and send.
-   - **ATS Applications**: Appends direct application URLs and matched CV paths to `output/pending_review.md` for manual submission.
+   - **Email Applications**: Generates customized pitch drafts saved locally and synced into Gmail ready for 1-click review and send with PDF attached.
+   - **ATS Applications**: Appends direct application URLs and matched CV paths to `output/pending_review.md` and Google Sheets for 1-click manual submission.
 
 ---
 
@@ -43,9 +50,9 @@ job-search/
 │   ├── sourcing/
 │   │   ├── models.py                # Pydantic Job model with auto SHA-256 & email detection
 │   │   ├── duplicator.py            # Deduplication manager with auto 30-day TTL pruning
-│   │   └── fetchers/                # Modular API fetchers (Jobicy, RemoteOK, Arbeitnow)
+│   │   └── fetchers/                # Modular fetchers (LinkedIn BD, WeWorkRemotely, Jobicy, RemoteOK, Arbeitnow)
 │   ├── ranking/
-│   │   └── matcher.py               # Multi-tier matcher with seniority & experience gates
+│   │   └── matcher.py               # Multi-tier matcher with 4 hard gates and Dhaka priority
 │   ├── cv_builder/
 │   │   ├── selector.py              # Relevant bullet & project selector
 │   │   ├── latex_escaper.py         # Jinja2 LaTeX escaping utilities
@@ -64,7 +71,7 @@ job-search/
 ├── tests/
 │   └── test_flow.py                 # Full integration test suite & cache tests
 ├── .github/workflows/
-│   └── job_pipeline.yml             # Scheduled daily GitHub Actions workflow (09:00 UTC)
+│   └── job_pipeline.yml             # Scheduled daily GitHub Actions workflow (01:00 UTC / 7:00 AM BST)
 ├── requirements.txt
 └── .env.example
 ```

@@ -61,15 +61,7 @@ class ApplicationTracker:
         if not row.get("apply_status"):
             row["apply_status"] = "PENDING_REVIEW" if row.get("status") == "QUALIFIED" else "N/A"
 
-        # 1. Log locally to CSV
-        try:
-            with open(self.csv_path, 'a', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=self.headers, extrasaction='ignore')
-                writer.writerow(row)
-        except Exception as e:
-            print(f"[Warning] Failed to log job to CSV: {e}")
-
-        # 2. Sync to Google Sheets via Webhook (if configured)
+        # 1. Sync to Google Sheets via Webhook (if configured)
         if self.webhook_url:
             payload = dict(row)
             cv_path = payload.get("cv_path")
@@ -82,31 +74,44 @@ class ApplicationTracker:
                 except Exception as e:
                     print(f"[Warning] Failed to encode PDF for cloud sync: {e}")
 
-            self._sync_to_webhook(payload)
+            webhook_resp = self._sync_to_webhook(payload)
+            if webhook_resp.get("drive_link"):
+                row["drive_link"] = webhook_resp["drive_link"]
+            if webhook_resp.get("apply_status") == "GMAIL_DRAFT_CREATED":
+                row["apply_status"] = "GMAIL_DRAFT_CREATED"
 
-    def _sync_to_webhook(self, row: Dict[str, Any]):
+        # 2. Log locally to CSV (with drive_link populated from webhook if available)
+        try:
+            with open(self.csv_path, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=self.headers, extrasaction='ignore')
+                writer.writerow(row)
+        except Exception as e:
+            print(f"[Warning] Failed to log job to CSV: {e}")
+
+    def _sync_to_webhook(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        resp_data = {}
         try:
             resp = requests.post(self.webhook_url, json=row, timeout=15, allow_redirects=True)
             if resp.status_code in (200, 302):
-                data = {}
                 try:
-                    data = resp.json()
+                    resp_data = resp.json()
                 except Exception:
                     pass
                 msg = f"[Google Sheets] Synced '{row.get('company')} - {row.get('title')}' directly to Google Sheet!"
-                if data.get("drive_link"):
-                    msg += f" (Drive: {data.get('drive_link')})"
-                elif data.get("drive_error"):
-                    msg += f" [Drive Warning: {data.get('drive_error')} - please authorize DriveApp in Apps Script]"
-                if data.get("apply_status") == "GMAIL_DRAFT_CREATED":
+                if resp_data.get("drive_link"):
+                    msg += f" (Drive: {resp_data.get('drive_link')})"
+                elif resp_data.get("drive_error"):
+                    msg += f" [Drive Warning: {resp_data.get('drive_error')} - please authorize DriveApp in Apps Script]"
+                if resp_data.get("apply_status") == "GMAIL_DRAFT_CREATED":
                     msg += f" [Gmail Draft Created]"
-                elif data.get("gmail_error"):
-                    msg += f" [Gmail Warning: {data.get('gmail_error')}]"
+                elif resp_data.get("gmail_error"):
+                    msg += f" [Gmail Warning: {resp_data.get('gmail_error')}]"
                 print(msg)
             else:
                 print(f"[Google Sheets Warning] Webhook returned HTTP {resp.status_code}. Record safely preserved in local CSV.")
         except Exception as e:
             print(f"[Google Sheets Warning] Could not reach Webhook ({e}). Record safely preserved in local CSV.")
+        return resp_data
 
     def prune_local_records(self, ttl_days: int = 30) -> int:
         """Prunes rows from applications.csv older than ttl_days."""
