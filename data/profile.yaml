@@ -12,7 +12,7 @@ candidate:
     period: "May 2022 – June 2026"
     cgpa: "3.77 / 4.00"
 
-cv_template: "moderncv_classic_blue.tex.j2" # File name in templates/ directory
+cv_template: "sb2nov_cv.tex.j2" # File name in templates/ directory (Jake's Resume / sb2nov format)
 
 target_roles:
   - "Full Stack Developer"

@@ -32,6 +32,8 @@ def create_latex_jinja_env(template_dir: str = "templates") -> jinja2.Environmen
         block_end_string=r"}",
         variable_start_string=r"\VAR{",
         variable_end_string=r"}",
+        comment_start_string=r"\%{",
+        comment_end_string=r"}",
         trim_blocks=True,
         lstrip_blocks=True,
     )

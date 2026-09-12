@@ -56,6 +56,7 @@ experience:
 projects:
   - id: "chit_chat"
     name: "Chit-Chat"
+    github: "https://github.com/saiefadnan/realTimeChat"
     tech_stack: ["Node.js", "Express", "Socket.io", "WebRTC", "MongoDB", "Firestore"]
     bullets:
       - id: "cc_01"
@@ -70,6 +71,7 @@ projects:
 
   - id: "medishare"
     name: "MediShare"
+    github: "https://github.com/saiefadnan/MediShare"
     tech_stack: ["React.js", "Express.js", "Supabase"]
     bullets:
       - id: "ms_01"
@@ -81,6 +83,7 @@ projects:
 
   - id: "vehicle_expresso"
     name: "Vehicle Expresso"
+    github: "https://github.com/Tamal267/vehicleExpresso"
     tech_stack: ["React.js", "Express.js", "Oracle DB", "Socket.io"]
     bullets:
       - id: "ve_01"
@@ -95,6 +98,7 @@ projects:
 
   - id: "pdf_explainer_ai"
     name: "PDF Explainer AI"
+    github: "https://github.com/saiefadnan/PDF-Explainer-AI"
     tech_stack: ["Python", "Streamlit", "Pinecone", "Groq", "Hugging Face"]
     bullets:
       - id: "pe_01"
@@ -109,6 +113,7 @@ projects:
 
   - id: "neighborly"
     name: "Neighborly"
+    github: "https://github.com/saiefadnan/Neighborly"
     tech_stack: ["Flutter", "Riverpod", "Firebase", "Hono"]
     bullets:
       - id: "nb_01"

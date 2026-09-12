@@ -1,0 +1,118 @@
+\documentclass[11pt,a4paper]{moderncv}
+\moderncvstyle{classic}
+\moderncvcolor{blue}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[scale=0.85]{geometry}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage[strings]{underscore}
+
+\name{\VAR{first_name}}{\VAR{last_name}}
+\title{\VAR{candidate.title | latex_escape}}
+\address{\VAR{candidate.location | latex_escape}}{}{}
+\phone[mobile]{\VAR{candidate.phone | latex_escape}}
+\email{\VAR{candidate.email | latex_escape}}
+\social[github]{\VAR{candidate.github | replace('https://github.com/', '') | replace('github.com/', '') | latex_escape}}
+\social[linkedin]{\VAR{candidate.linkedin | replace('https://www.linkedin.com/in/', '') | replace('https://linkedin.com/in/', '') | replace('linkedin.com/in/', '') | latex_escape}}
+
+\begin{document}
+\makecvtitle
+
+% ---- Education ----
+\section{Education}
+\begin{tabularx}{\textwidth}{@{}Xr@{}}
+\BLOCK{for edu in education}
+\textbf{\VAR{edu.institution | latex_escape}} & \VAR{edu.period} \\
+\VAR{edu.degree | latex_escape} & \\
+\textbf{CGPA:} \VAR{edu.cgpa} & \\
+\BLOCK{endfor}
+\end{tabularx}
+
+% ---- Professional Experience ----
+\section{Professional Experience}
+\BLOCK{for exp in experience}
+\textbf{\VAR{exp.role | latex_escape}} \hfill \textit{\VAR{exp.company | latex_escape} -- \VAR{exp.location | latex_escape} \hfill \VAR{exp.period}}
+\begin{itemize}
+\BLOCK{for b in exp.bullets}
+  \item \VAR{b.text | latex_escape}
+\BLOCK{endfor}
+\end{itemize}
+\BLOCK{endfor}
+
+% ---- Technical Skills ----
+\section{Technical Skills}
+\begin{multicols}{2}
+\textbf{\underline{Languages}}
+\begin{itemize}
+  \item Java, JavaScript, Python, C/C++, Dart
+\end{itemize}
+
+\textbf{\underline{Web Technologies}}
+\begin{itemize}
+  \item Frontend: React.js, HTML5, CSS3
+  \item Backend: Node.js, Express.js, Hono
+  \item Real-time: Socket.io, REST APIs
+\end{itemize}
+
+\textbf{\underline{Databases}}
+\begin{itemize}
+  \item PostgreSQL, MongoDB, Oracle
+  \item Firebase, Supabase
+\end{itemize}
+
+\columnbreak
+
+\textbf{\underline{Mobile}}
+\begin{itemize}
+  \item Flutter (cross-platform), Firebase Integration, Riverpod
+\end{itemize}
+
+\textbf{\underline{AI / ML}}
+\begin{itemize}
+  \item Hugging Face Transformers, NLP, QA Systems
+  \item Unity ML-Agents, Reinforcement Learning (PPO)
+  \item Streamlit
+\end{itemize}
+
+\textbf{\underline{Tools \& Concepts}}
+\begin{itemize}
+  \item Git/GitHub, Unity, Godot Engine
+  \item OAuth 2.0, RBAC, WebSockets, Docker(Basic)
+\end{itemize}
+\end{multicols}
+
+% ---- Projects ----
+\section{Projects}
+\BLOCK{for proj in projects}
+\textbf{\VAR{proj.name | latex_escape}} \hfill \textit{\VAR{', '.join(proj.tech_stack) | latex_escape}}
+\begin{itemize}
+\BLOCK{for b in proj.bullets}
+  \item \VAR{b.text | latex_escape}
+\BLOCK{endfor}
+\BLOCK{if proj.links}
+  \item \VAR{proj.links}
+\BLOCK{endif}
+\end{itemize}
+\BLOCK{endfor}
+
+% ---- Competitive Programming ----
+\section{Competitive Programming}
+\textbf{\VAR{cp.total_solved}} problems solved across multiple platforms:
+\begin{itemize}
+  \item \textbf{Codeforces:} 240 problems | \href{https://codeforces.com/profile/saiefadnan}{\textcolor{blue}{saiefadnan}}
+  \item \textbf{LeetCode:} 81 problems | \href{https://leetcode.com/u/Saief_adnan/}{\textcolor{blue}{Saief\_adnan}}
+  \item \textbf{VJudge:} 220 problems | \href{https://vjudge.net/user/SAIEF_ADNAN078}{\textcolor{blue}{SAIEF\_ADNAN078}}
+\end{itemize}
+
+% ---- Achievements ----
+\section{Achievements \& Certifications}
+\begin{itemize}
+\BLOCK{for cert in certifications}
+  \item \VAR{cert | latex_escape}
+\BLOCK{endfor}
+\end{itemize}
+
+\end{document}

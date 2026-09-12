@@ -41,7 +41,8 @@ class Selector:
             scored_projects.append((total_project_score, {
                 "name": project["name"],
                 "bullets": best_bullets,
-                "tech_stack": project["tech_stack"]
+                "tech_stack": project["tech_stack"],
+                "github": project.get("github", ""),
             }))
 
         scored_projects.sort(key=lambda x: x[0], reverse=True)
