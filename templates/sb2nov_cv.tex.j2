@@ -1,5 +1,6 @@
 \documentclass[letterpaper,10pt]{article}
 
+\usepackage{fontawesome5}
 \usepackage{latexsym}
 \usepackage[empty]{fullpage}
 \usepackage{titlesec}
@@ -23,22 +24,23 @@
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
 
-% Adjust margins for strict 1-page fit
+% Adjust margins
 \addtolength{\oddsidemargin}{-0.5in}
 \addtolength{\evensidemargin}{-0.5in}
-\addtolength{\textwidth}{1.0in}
-\addtolength{\topmargin}{-0.6in}
-\addtolength{\textheight}{1.2in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
 
 \urlstyle{same}
+
 \raggedbottom
 \raggedright
 \setlength{\tabcolsep}{0in}
 
 % Sections formatting
 \titleformat{\section}{
-  \vspace{-6pt}\scshape\raggedright\large
-}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule\vspace{-5pt}]
 
 % Custom commands
 \newcommand{\resumeItem}[1]{
@@ -55,86 +57,94 @@
     \end{tabular*}\vspace{-7pt}
 }
 
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
 \newcommand{\resumeProjectHeading}[2]{
-  \vspace{-2pt}\item
-    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
       \small#1 & #2 \\
     \end{tabular*}\vspace{-7pt}
 }
 
-\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.0in, label={}]}
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
-\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, label=\textbullet, itemsep=1pt, topsep=1pt, parsep=0pt]}
-\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\definecolor{Black}{RGB}{0, 0, 0}
+\newcommand{\seticon}[1]{\textcolor{Black}{\csname #1\endcsname}}
 
 \begin{document}
 
-%----------HEADING----------
+%----------HEADING----------%
 \begin{center}
-    {\Huge \scshape \VAR{candidate.name}} \\ \vspace{2pt}
-    \small \VAR{candidate.location.split('(')[0].strip()} $|$ \VAR{candidate.phone} $|$ \href{mailto:\VAR{candidate.email}}{\underline{\VAR{candidate.email}}} $|$ 
-    \href{https://\VAR{candidate.linkedin.replace('https://', '').replace('http://', '')}}{\underline{linkedin.com/in/\VAR{candidate.linkedin.split('/')[-1]}}} $|$
-    \href{https://\VAR{candidate.github.replace('https://', '').replace('http://', '')}}{\underline{github.com/\VAR{candidate.github.split('/')[-1]}}}
+    \textbf{\Huge \scshape \VAR{candidate.name}} \\ \vspace{1pt}
+    \small \VAR{candidate.location.split('(')[0].strip()} \\ \vspace{1pt}
+    \seticon{faPhone} \ \small \VAR{candidate.phone} \quad
+    \href{mailto:\VAR{candidate.email}}{\seticon{faEnvelope} \underline{\VAR{candidate.email}}} \quad
+    \href{https://\VAR{candidate.linkedin.replace('https://', '').replace('http://', '')}}{\seticon{faLinkedin} \underline{linkedin.com/in/\VAR{candidate.linkedin.split('/')[-1]}}} \quad
+    \href{https://\VAR{candidate.github.replace('https://', '').replace('http://', '')}}{\seticon{faGithub} \underline{github.com/\VAR{candidate.github.split('/')[-1]}}}
 \end{center}
 
-%-----------EDUCATION-----------
+%-----------EDUCATION-----------%
 \section{Education}
-  \resumeSubHeadingListStart
+    \resumeSubHeadingListStart
     \BLOCK{for edu in education}
     \resumeSubheading
-      {\VAR{edu.institution | latex_escape}}{\VAR{candidate.location.split('(')[0].strip() | latex_escape}}
-      {\VAR{edu.degree | latex_escape}; CGPA: \VAR{edu.cgpa}}{\VAR{edu.period}}
+    {\VAR{edu.institution | latex_escape}}{\VAR{edu.period}}
+    {\VAR{edu.degree | latex_escape} (CGPA: \VAR{edu.cgpa})}{\VAR{candidate.location.split('(')[0].strip() | latex_escape}}
     \BLOCK{endfor}
-  \resumeSubHeadingListEnd
+    \resumeSubHeadingListEnd
 
-%-----------EXPERIENCE-----------
-\section{Professional Experience}
-  \resumeSubHeadingListStart
+%-----------EXPERIENCE-----------%
+\section{Experience}
+\resumeSubHeadingListStart
     \BLOCK{for exp in experience}
     \resumeSubheading
-      {\VAR{exp.role | latex_escape}}{\VAR{exp.period}}
-      {\VAR{exp.company | latex_escape}}{\VAR{exp.location | latex_escape}}
-      \resumeItemListStart
+    {\VAR{exp.company | latex_escape}}{\VAR{exp.period}}
+    {\VAR{exp.role | latex_escape}}{\VAR{exp.location | latex_escape}}
+    \resumeItemListStart
         \BLOCK{for b in exp.bullets}
         \resumeItem{\VAR{b.text | latex_escape}}
         \BLOCK{endfor}
-      \resumeItemListEnd
+    \resumeItemListEnd
     \BLOCK{endfor}
-  \resumeSubHeadingListEnd
+\resumeSubHeadingListEnd
 
-%-----------PROJECTS-----------
-\section{Key Projects}
-  \resumeSubHeadingListStart
+%-----------PROJECTS-----------%
+\section{Projects}
+\resumeSubHeadingListStart
     \BLOCK{for proj in projects}
     \resumeProjectHeading
-      {\textbf{\VAR{proj.name | latex_escape}} $|$ \emph{\VAR{', '.join(proj.tech_stack) | latex_escape}}\BLOCK{if proj.github} $|$ \href{\VAR{proj.github}}{\underline{GitHub}}\BLOCK{endif}}{}
-      \resumeItemListStart
+    {\textbf{\VAR{proj.name | latex_escape}} $|$ \emph{\VAR{', '.join(proj.tech_stack) | latex_escape}}}{\BLOCK{if proj.github}\href{\VAR{proj.github}}{GitHub}\BLOCK{endif}\BLOCK{if proj.name == 'Chit-Chat'} $|$ \href{https://realtimechat-7aqr.onrender.com/}{Live Demo}\BLOCK{endif}}
+    \resumeItemListStart
         \BLOCK{for b in proj.bullets}
         \resumeItem{\VAR{b.text | latex_escape}}
         \BLOCK{endfor}
-      \resumeItemListEnd
+    \resumeItemListEnd
     \BLOCK{endfor}
-  \resumeSubHeadingListEnd
+\resumeSubHeadingListEnd
 
-%-----------TECHNICAL SKILLS-----------
+%-----------PROGRAMMING SKILLS-----------%
 \section{Technical Skills}
- \begin{itemize}[leftmargin=0.0in, label={}]
-    \small{\item{
-     \textbf{Languages}{: Java, JavaScript (ES6+), Python, C/C++, Dart, SQL} \\
-     \textbf{Web Development}{: React.js, Node.js, Express.js, Hono, RESTful APIs, HTML5, CSS3} \\
-     \textbf{Databases \& Backend}{: PostgreSQL, MongoDB, Oracle DB, Supabase, Firebase Firestore, Socket.io, WebSockets, WebRTC} \\
-     \textbf{Mobile \& AI}{: Flutter, Riverpod, Hugging Face Transformers, NLP, RAG, Streamlit} \\
-     \textbf{DevOps \& Tools}{: Git/GitHub, Docker (Basic), OAuth 2.0, RBAC, Postman, Linux/Bash}
-    }}
- \end{itemize}
-
-%-----------COMPETITIVE PROGRAMMING & ACHIEVEMENTS-----------
-\section{Competitive Programming \& Achievements}
- \begin{itemize}[leftmargin=0.0in, label={}]
-    \small{\item{
-     \textbf{Competitive Programming}{: \textbf{\VAR{cp.total_solved}} problems solved (Codeforces: 240 $|$ VJudge: 220 $|$ LeetCode: 81)} \\
-     \textbf{Certifications}{: Industrial Attachment (Teletalk), DevOps 101 \& DevOps Tools (Simplilearn), HACK NSU S4, IDPC 2023}
-    }}
- \end{itemize}
+    \begin{itemize}[leftmargin=0.15in, label={}]
+	\small{\item{
+		\textbf{Languages}{: Java, JavaScript, Python, C/C++, Dart} \\
+		\textbf{Web Technologies}{: React.js, HTML5, CSS3, Node.js, Express.js, Hono, Socket.io, REST APIs} \\
+		\textbf{Databases}{: PostgreSQL, MongoDB, Oracle, Firebase, Supabase} \\
+		\textbf{Mobile}{: Flutter (cross-platform), Firebase Integration, Riverpod} \\
+		\textbf{AI / ML}{: Hugging Face Transformers, NLP, QA Systems, Unity ML-Agents, Reinforcement Learning (PPO), Streamlit} \\
+		\textbf{Tools \& Concepts}{: Git/GitHub, Unity, Godot Engine, OAuth 2.0, RBAC, WebSockets, Docker (Basic)}
+	}}
+    \end{itemize}
 
 \end{document}
