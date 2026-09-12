@@ -3,7 +3,7 @@ name: Daily Automated Job Search Pipeline
 on:
   schedule:
     # Runs every day at 7:00 AM BST (01:00 UTC)
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
   workflow_dispatch: # Allows manual 1-click execution anytime from GitHub Actions tab
 
 permissions:
@@ -23,8 +23,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install Python Dependencies
         run: |
